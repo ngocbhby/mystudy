@@ -13,7 +13,7 @@ const studyRoutes = new Set([
 ])
 
 export function createApi(env, defaultOrigin) {
-  const origin = new URL(env.https://mystudy.onrender.com || defaultOrigin).origin
+  const origin = new URL(env.APP_ORIGIN || defaultOrigin).origin
   const pool = env.DATABASE_URL
     ? new Pool({ connectionString: env.DATABASE_URL, connectionTimeoutMillis: 5000 })
     : null
