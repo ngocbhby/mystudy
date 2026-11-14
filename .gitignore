@@ -1,6 +1,11 @@
 node_modules/
 dist/
-.env
-.env.*
-!.env.example
+target/
+.idea/
+.vscode/
 .DS_Store
+# Bí mật cục bộ — không commit. Các file .env.development/.staging/.production của frontend chỉ chứa biến công khai.
+.env
+.env.local
+.env.*.local
+backend/src/main/resources/static/

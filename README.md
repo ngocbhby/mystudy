@@ -1,63 +1,146 @@
 # MyStudy
 
-Ứng dụng ôn thi THPT tiếng Việt, gồm đăng nhập, thiết lập mục tiêu, tổng quan và lộ trình cá nhân. Frontend dùng React, JavaScript (JSX) và CSS. Vite chạy môi trường phát triển và đóng gói frontend. API Node.js xử lý Google OAuth và đăng ký, đăng nhập bằng email/mật khẩu. PostgreSQL lưu hồ sơ, phiên, mục tiêu, lộ trình và tiến độ.
+Ứng dụng ôn thi THPT bằng tiếng Việt: đăng nhập (email hoặc Google), thiết lập mục tiêu, lộ trình học theo tuần, tổng quan nhiệm vụ hằng ngày và kho đề thi.
 
-## Cấu trúc mã nguồn
+## Techstack
 
-| Thư mục | Trách nhiệm |
+| Tầng | Công nghệ |
 | --- | --- |
-| `frontend/` | React và Vite. `src/features/auth/` chứa giao diện đăng nhập; `src/features/study/` chứa thiết lập mục tiêu, tổng quan, lịch tuần và mã gọi API học tập. |
-| `backend/` | API Node.js. `src/auth/` xử lý OAuth, email và phiên đăng nhập; `src/study/` kiểm tra yêu cầu, xếp lịch và ghi dữ liệu; `db/` chứa migration PostgreSQL. |
-| `packages/shared/` | Quy tắc kiểm tra mục tiêu, danh mục môn và hàm xác định ngày theo giờ Việt Nam. Gói này dùng được ở cả trình duyệt và máy chủ. |
+| Frontend | React 19, TypeScript, Vite, MUI, React Router, TanStack Query, Axios, React Hook Form + Zod, Vitest |
+| Backend | Java 21, Spring Boot 4 (Web MVC, Security, OAuth2 Client, Data JPA/Hibernate, Validation, Actuator), Flyway, Spring Session JDBC |
+| Dữ liệu | PostgreSQL 16+ |
+| Triển khai | Docker nhiều giai đoạn, Render (`render.yaml`), GitHub Actions |
 
-Frontend gọi các đường dẫn tương đối `/api/…`. Khi phát triển, Vite chuyển các yêu cầu này đến backend ở `127.0.0.1:3001`. Backend đọc cấu hình riêng, kiểm tra phiên và truy cập PostgreSQL.
+## Cấu trúc
+
+```
+backend/   Spring Boot (Maven wrapper: ./mvnw)
+frontend/  React + TypeScript (Vite)
+docs/      Thiết kế cơ sở dữ liệu
+Dockerfile, render.yaml, .github/workflows/ci.yml
+```
+
+### Backend (`backend/src/main/java/vn/mystudy`)
+
+Tổ chức theo **tính năng**, mỗi tính năng chia tầng rõ ràng:
+
+```
+<feature>/
+  controller/   Nhận HTTP, kiểm tra đầu vào, trả ApiResponse. Không chứa nghiệp vụ.
+  service/      Interface nghiệp vụ + <Name>ServiceImpl (giao dịch @Transactional).
+  repository/   Spring Data JPA.
+  entity/       Thực thể JPA ánh xạ schema Flyway.
+  dto/          Record request/response; entity không bao giờ ra ngoài API.
+  mapper/       Entity <-> DTO.
+```
+
+| Package | Vai trò |
+| --- | --- |
+| `auth` | Đăng ký, đăng nhập email, trạng thái phiên. |
+| `study` | Mục tiêu, lộ trình, nhiệm vụ; `scheduling/StudyScheduler` là logic xếp lịch thuần (dễ test). |
+| `exams` | Kho đề và đề trực tuyến. |
+| `security` | Cấu hình Spring Security, CSRF, giới hạn tốc độ, OAuth2 Google, mã hóa mật khẩu. |
+| `common` | `ApiResponse`, `ErrorCode`, ngoại lệ + `GlobalExceptionHandler`, log truy cập/audit, `VietnamClock`. |
+| `config` | Thuộc tính cấu hình, kết nối CSDL, phục vụ frontend (SPA). |
+
+**Khung phản hồi chung.** Mọi API (kể cả lỗi từ filter bảo mật) trả:
+
+```json
+{ "success": true,  "code": "OK", "message": "Thành công", "data": { }, "requestId": "…", "timestamp": "…" }
+{ "success": false, "code": "VALIDATION_FAILED", "message": "…", "errors": { "months": "…" }, "requestId": "…", "timestamp": "…" }
+```
+
+`code` là `ErrorCode` ổn định để frontend xử lý; `requestId` khớp với log và header `X-Request-Id`.
+
+**Log.** `logback-spring.xml`: dev là dòng dễ đọc kèm `[requestId]`; production (`prod`) là JSON một dòng trên stdout. Logger `ACCESS` ghi mỗi yêu cầu (method, đường dẫn, status, thời gian; không ghi query/body), logger `AUDIT` ghi đăng nhập/đăng ký (email được che). Lỗi bất ngờ chỉ ghi ở `GlobalExceptionHandler`, client nhận thông điệp chung.
+
+### Frontend (`frontend/src`)
+
+```
+app/        Khởi tạo: providers (Query, Theme), router (paths.ts, guards, lazy routes), layout, theme
+config/     env.ts — đọc và kiểm tra biến môi trường (Zod); nơi duy nhất dùng import.meta.env
+lib/        Hạ tầng dùng chung: http (Axios client, ApiError, CSRF), query (QueryClient, thời gian cache), date, format
+shared/     Component và hook dùng chung không thuộc tính năng nào
+features/   auth | study | exams — mỗi tính năng có api/ hooks/ components/ pages/ model/
+```
+
+- **Một cổng gọi API** (`lib/http/client.ts`): tự gỡ `ApiResponse`, chuyển mọi lỗi thành `ApiError`, tự thêm header CSRF, báo phiên hết hạn để xóa cache.
+- **Cache** bằng TanStack Query: khóa tập trung trong `features/*/api/keys.ts`, thời gian cache theo độ biến động (`staleTimes`), mutation tự invalidate dữ liệu liên quan.
+- **Route** khai báo ở `app/router/paths.ts`; trang tải theo yêu cầu (code splitting); `RequireAuth` bảo vệ trang cần đăng nhập.
+- **Stage/môi trường**: `.env.development`, `.env.staging`, `.env.production` (chỉ biến công khai `VITE_*`); `npm run dev`, `npm run build:staging`, `npm run build`.
 
 ## Chạy dự án
 
-Cần Node.js 24+ và PostgreSQL 16+ cho luồng đăng nhập.
+Cần Java 21+, Node 22+ (khuyến nghị 24). Backend dùng Maven wrapper nên không cần cài Maven.
 
-```sh
-npm ci
-npm run dev
+**1. Cơ sở dữ liệu** — dùng PostgreSQL của bạn, hoặc chạy bản nhúng (không cần cài gì):
+
+```bash
+cd backend && ./mvnw -q test-compile exec:java -Dexec.mainClass=vn.mystudy.support.DevDatabase -Dexec.classpathScope=test
 ```
 
-Lệnh `npm run dev` chạy cả hai tiến trình. Nếu muốn chạy riêng, mở hai terminal ở thư mục dự án và dùng `npm run dev:backend` và `npm run dev:frontend`.
+Lệnh in `DATABASE_URL=postgresql://postgres@localhost:54329/postgres`.
 
-Mở `http://localhost:5173`. Thẻ tuần học hiển thị từ thứ Hai đến Chủ nhật và tô ngày hiện tại theo múi giờ Việt Nam.
+**2. Cấu hình backend** — sao chép `backend/.env.example` thành `backend/.env.local` rồi điền `DATABASE_URL` (Google là tùy chọn).
 
-## Cấu hình đăng nhập
-
-1. Tạo cơ sở dữ liệu PostgreSQL và áp dụng [các migration](backend/db/README.md#áp-dụng-schema).
-2. Nếu chưa có `backend/.env.local`, chạy `cp backend/.env.example backend/.env.local`. Điền `DATABASE_URL` rồi khởi động lại backend.
-3. Chọn **Đăng ký** để tạo tài khoản email với mật khẩu ít nhất 12 ký tự. Mật khẩu được băm bằng scrypt. Tài khoản email có thể đăng nhập ngay sau khi tạo. Luồng này chưa gửi thư xác minh địa chỉ email.
-
-### Google OAuth
-
-1. Trong [Google Cloud Console](https://console.cloud.google.com/auth/clients), cấu hình màn hình đồng ý OAuth và tạo client loại **Web application**. Nếu ứng dụng ở chế độ Testing, thêm tài khoản dùng thử.
-2. Thêm `http://localhost:5173/api/auth/google/callback` vào **Authorized redirect URIs**. [Tài liệu Google OpenID Connect](https://developers.google.com/identity/openid-connect/openid-connect)
-3. Điền `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET` trong `backend/.env.local`, rồi khởi động lại backend. Hai biến này chỉ được đọc ở máy chủ.
-
-Cả hai cách đăng nhập dùng phiên 7 ngày với cookie HttpOnly. Đăng xuất xóa phiên hiện tại. Tài khoản Google được nhận diện bằng định danh `sub`. Hồ sơ Google và hồ sơ mật khẩu được tạo độc lập, kể cả khi email trùng nhau.
-
-## Mục tiêu và lộ trình
-
-Tài khoản mới mở màn **Thiết lập mục tiêu** sau khi đăng nhập. Chọn hai môn tự chọn khác nhau, nhập điểm của cả bốn môn và thời gian có thể học. Quỹ giờ cập nhật theo số ngày đã chọn; cảnh báo chỉ là ước tính và vẫn cho phép tạo lịch. Các giới hạn của biểu mẫu là 1–24 tháng, 1 phút–24 giờ mỗi ngày và 0–10 điểm.
-
-**Lưu và tạo lộ trình** mở lịch tuần hiện tại theo giờ Việt Nam. Nhiệm vụ được xếp trên các ngày đã chọn, trong giới hạn giờ học mỗi ngày. Từ màn Lộ trình có thể sửa mục tiêu hoặc đổi cách ôn; lịch mới giữ nhiệm vụ đã hoàn thành. Migration 004 cung cấp danh mục môn và chuyên đề dùng để tạo lịch.
-
-## Tổng quan
-
-Màn Tổng quan hiển thị các nhiệm vụ theo ngày Việt Nam, tiến độ hôm nay và điểm mục tiêu. Chọn **Học ngay** để mở nội dung ngắn và **Đánh dấu đã học** để lưu tiến độ. Chuỗi ngày học đếm những ngày liên tiếp có ít nhất một nhiệm vụ được hoàn thành, dựa trên thời điểm đánh dấu. Vào ngày nghỉ, màn hình hiển thị ngày học gần nhất trong tương lai nếu có.
-
-## Kho đề thi
-
-Mở `/kho-de-thi` để lọc đề theo môn và năm; không cần đăng nhập. Migration 005 bổ sung ba PDF tham khảo 2025 của Bộ GD&ĐT (Toán, Ngữ văn, Tiếng Anh) và đề Toán luyện đạo hàm của MyStudy. Các PDF giữ nguyên bản có đáp án; nút **Xem đáp án** mở tại trang đáp án. Đề MyStudy hỗ trợ luyện có bấm giờ và chấm ngay trong tab, chưa lưu lượt thi vào tài khoản.
-
-## Build và chạy bản production
-
-```sh
-npm run build
-npm start
+```bash
+cp backend/.env.example backend/.env.local
 ```
 
-`npm start` phục vụ cả bản build trong `frontend/dist/` và API, mặc định ở cổng 3000. Nếu thử OAuth tại cổng này, chạy `APP_ORIGIN=http://localhost:3000 npm start` và thêm URI callback tương ứng trong Google Cloud. Khi triển khai, đặt `APP_ORIGIN` thành địa chỉ HTTPS của ứng dụng và đăng ký callback cho địa chỉ đó. Có thể đặt `HOST` và `PORT` để cấu hình địa chỉ lắng nghe của Node.js ở chế độ production.
+**3. Chạy** (hai terminal):
+
+```bash
+cd backend && ./mvnw spring-boot:run
+```
+
+```bash
+cd frontend && npm ci && npm run dev
+```
+
+Mở `http://localhost:5173`. Vite chuyển tiếp `/api` sang Spring Boot ở `localhost:8080`, nên trình duyệt chỉ thấy một origin (cookie phiên, CSRF và OAuth hoạt động giống production). Flyway tự tạo schema khi backend khởi động.
+
+### Đăng nhập Google (tùy chọn)
+
+1. Trong [Google Cloud Console](https://console.cloud.google.com/auth/clients) tạo OAuth client loại **Web application**.
+2. Thêm `http://localhost:5173/api/auth/google/callback` vào **Authorized redirect URIs** (production: `https://<miền>/api/auth/google/callback`).
+3. Điền `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET` vào `backend/.env.local` rồi khởi động lại backend. Thiếu hai biến này thì nút Google bị tắt, đăng nhập email vẫn hoạt động.
+
+## Kiểm thử và chất lượng
+
+```bash
+cd backend && ./mvnw verify          # unit + tích hợp (PostgreSQL nhúng, Flyway, HTTP đầy đủ)
+cd frontend && npm run lint && npm run typecheck && npm test
+```
+
+CI (`.github/workflows/ci.yml`) chạy cả hai trên mỗi pull request.
+
+## Triển khai
+
+`Dockerfile` build frontend, nhúng vào jar Spring Boot rồi chạy bằng JRE tối giản dưới người dùng không phải root. `render.yaml` mô tả web service và PostgreSQL trên Render.
+
+Biến môi trường production:
+
+| Biến | Ý nghĩa |
+| --- | --- |
+| `SPRING_PROFILES_ACTIVE=prod` | Bật log JSON, cookie `__Host-` + Secure, kiểm tra cấu hình khi khởi động. |
+| `APP_ORIGIN` | Địa chỉ **HTTPS** công khai. Backend từ chối khởi động nếu không phải HTTPS. |
+| `DATABASE_URL` | `postgresql://…`; máy chủ ngoài localhost tự dùng `sslmode=require`. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Tùy chọn. |
+
+Health check: `GET /actuator/health`. Phía sau reverse proxy, backend tin `X-Forwarded-*` chỉ từ địa chỉ proxy nội bộ (`server.forward-headers-strategy=native`); nếu proxy của bạn nằm ngoài dải riêng tư mặc định, đặt `server.tomcat.remoteip.internal-proxies`.
+
+### Nâng cấp từ bản Node.js
+
+CSDL cũ dùng được nguyên trạng: Flyway nhận V1–V5 làm điểm xuất phát rồi chạy V6–V7 (xem [docs/database.md](docs/database.md)). Mật khẩu email cũ vẫn đăng nhập được và tự nâng cấp lên Argon2. Phiên đăng nhập cũ bị hủy, người dùng đăng nhập lại một lần. Callback Google giữ nguyên `/api/auth/google/callback` nên không cần đổi cấu hình Google.
+
+## Bảo mật
+
+- Mật khẩu: Argon2id (OWASP), giới hạn băm đồng thời để chống cạn RAM; scrypt cũ được nâng cấp khi đăng nhập.
+- Phiên: cookie HttpOnly, SameSite=Lax, `__Host-` + Secure ở production, đổi ID khi đăng nhập (chống session fixation), lưu ở PostgreSQL, hết hạn sau 7 ngày.
+- CSRF: token trong cookie + header `X-XSRF-TOKEN` cho mọi yêu cầu ghi.
+- Giới hạn tốc độ: theo IP (đọc đúng IP thật qua proxy tin cậy) và theo email khi đăng nhập sai; phản hồi 429 + `Retry-After`.
+- Google: Authorization Code + PKCE, `state`, `nonce`, kiểm tra ID token; chỉ lưu email đã được Google xác minh.
+- Header: CSP (script chỉ `'self'`), HSTS, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, COOP/CORP; API luôn `Cache-Control: no-store`.
+- Mặc định từ chối: API không khai báo quyền thì bị chặn; chỉ `/api/exams` (GET), phiên và đăng nhập là công khai.
+
+**Hạn chế đã biết:** đăng ký chưa xác minh email, và thông báo "email đã tồn tại" cho phép dò email (được giảm nhẹ bằng giới hạn tốc độ). Khắc phục triệt để cần gửi email xác minh (SMTP).
