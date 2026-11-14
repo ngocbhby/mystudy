@@ -1,0 +1,80 @@
+spring:
+  application:
+    name: mystudy
+  config:
+    import: optional:file:.env.local[.properties]
+  web:
+    resources:
+      add-mappings: false
+  session:
+    jdbc:
+      initialize-schema: never
+      cleanup-cron: "0 */5 * * * *"
+  flyway:
+    # CSDL đã tạo bằng migration 001-005 chạy tay được nhận làm điểm xuất phát (baseline).
+    baseline-on-migrate: true
+    baseline-version: "5"
+    validate-on-migrate: true
+  jpa:
+    open-in-view: false
+    hibernate:
+      # Schema do Flyway quản lý; Hibernate chỉ kiểm tra entity khớp với schema.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          batch_size: 50
+          time_zone: UTC
+        order_inserts: true
+        order_updates: true
+        format_sql: false
+  datasource:
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 5000
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  # Render (và hầu hết reverse proxy) chuyển tiếp qua X-Forwarded-*; Tomcat chỉ tin proxy nội bộ.
+  forward-headers-strategy: native
+  max-http-request-header-size: 16KB
+  servlet:
+    session:
+      timeout: 7d
+      cookie:
+        name: mystudy_session
+        http-only: true
+        same-site: lax
+        path: /
+        max-age: 7d
+  error:
+    include-message: never
+    include-stacktrace: never
+    include-binding-errors: never
+  tomcat:
+    max-swallow-size: 64KB
+    max-http-form-post-size: 16KB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+
+app:
+  origin: ${APP_ORIGIN:http://localhost:5173}
+  database-url: ${DATABASE_URL:}
+  google-client-id: ${GOOGLE_CLIENT_ID:}
+  google-client-secret: ${GOOGLE_CLIENT_SECRET:}
+  # Số lần thử đăng nhập/đăng ký tối đa mỗi phút trên mỗi địa chỉ IP.
+  auth-attempts-per-minute: 10
+  # Số lần đăng nhập sai tối đa trên mỗi email trong 15 phút.
+  failed-logins-per-email: 8

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <!-- Mức log, định dạng dev/prod và logger ACCESS/AUDIT được cấu hình tập trung tại đây. -->
+  <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+  <springProperty scope="context" name="APP_NAME" source="spring.application.name" defaultValue="mystudy"/>
+
+  <property name="DEV_PATTERN"
+            value="%clr(%d{HH:mm:ss.SSS}){faint} %clr(%5p) %clr([%X{requestId:-no-req}]){cyan} %clr(%-28.28logger{27}){blue} : %m%n%wEx"/>
+
+  <!-- Hibernate in nguyên câu INSERT kèm giá trị (có thể chứa mã băm mật khẩu) khi vi phạm ràng buộc; lỗi đã được xử lý và ghi ở tầng ứng dụng. -->
+  <logger name="org.hibernate.orm.jdbc.error" level="OFF"/>
+
+  <springProfile name="!prod">
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder><pattern>${DEV_PATTERN}</pattern></encoder>
+    </appender>
+    <root level="INFO"><appender-ref ref="CONSOLE"/></root>
+    <logger name="vn.mystudy" level="DEBUG"/>
+    <logger name="ACCESS" level="INFO"/>
+    <logger name="AUDIT" level="INFO"/>
+    <logger name="org.hibernate.SQL" level="${SQL_LOG_LEVEL:-INFO}"/>
+  </springProfile>
+
+  <!-- Production: JSON một dòng trên stdout (Render thu thập), kèm requestId từ MDC. -->
+  <springProfile name="prod">
+    <appender name="JSON" class="ch.qos.logback.core.ConsoleAppender">
+      <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+        <customFields>{"app":"${APP_NAME}"}</customFields>
+      </encoder>
+    </appender>
+    <root level="INFO"><appender-ref ref="JSON"/></root>
+    <logger name="vn.mystudy" level="INFO"/>
+    <logger name="org.hibernate" level="WARN"/>
+    <logger name="org.springframework.security" level="WARN"/>
+  </springProfile>
+</configuration>

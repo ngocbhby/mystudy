@@ -1,0 +1,7 @@
+server:
+  servlet:
+    session:
+      cookie:
+        # Tiền tố __Host- buộc cookie là Secure, Path=/ và không có Domain.
+        name: __Host-mystudy_session
+        secure: true
