@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 class SpaController {
 
     @GetMapping({
-        "/", "/dang-nhap", "/thiet-lap-muc-tieu", "/lo-trinh", "/tong-quan", "/kho-de-thi", "/thi-thu",
+        "/", "/dang-nhap", "/thiet-lap-muc-tieu", "/lo-trinh", "/tong-quan", "/kho-de-thi", "/kho-bai-mau", "/thi-thu",
         "/thi-thu/{id:[0-9a-fA-F-]{36}}",
         "/thi-thu/{id:[0-9a-fA-F-]{36}}/{view:de|dap-an}"
     })

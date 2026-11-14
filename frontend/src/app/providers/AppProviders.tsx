@@ -27,7 +27,11 @@ export function AppProviders({ children }: { children: ReactNode }) {
         <SessionExpiryWatcher />
         {children}
       </ThemeProvider>
-      {Devtools && <Suspense><Devtools initialIsOpen={false} /></Suspense>}
+      {Devtools && (
+        <Suspense>
+          <Devtools initialIsOpen={false} />
+        </Suspense>
+      )}
     </QueryClientProvider>
   )
 }

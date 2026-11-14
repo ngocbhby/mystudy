@@ -39,6 +39,7 @@ Tổ chức theo **tính năng**, mỗi tính năng chia tầng rõ ràng:
 | `auth` | Đăng ký, đăng nhập email, trạng thái phiên. |
 | `study` | Mục tiêu, lộ trình, nhiệm vụ; `scheduling/StudyScheduler` là logic xếp lịch thuần (dễ test). |
 | `exams` | Kho đề và đề trực tuyến. |
+| `samples` | Kho bài mẫu (đề bài, lời giải, ghi chú cách làm). |
 | `security` | Cấu hình Spring Security, CSRF, giới hạn tốc độ, OAuth2 Google, mã hóa mật khẩu. |
 | `common` | `ApiResponse`, `ErrorCode`, ngoại lệ + `GlobalExceptionHandler`, log truy cập/audit, `VietnamClock`. |
 | `config` | Thuộc tính cấu hình, kết nối CSDL, phục vụ frontend (SPA). |
@@ -61,7 +62,7 @@ app/        Khởi tạo: providers (Query, Theme), router (paths.ts, guards, la
 config/     env.ts — đọc và kiểm tra biến môi trường (Zod); nơi duy nhất dùng import.meta.env
 lib/        Hạ tầng dùng chung: http (Axios client, ApiError, CSRF), query (QueryClient, thời gian cache), date, format
 shared/     Component và hook dùng chung không thuộc tính năng nào
-features/   auth | study | exams — mỗi tính năng có api/ hooks/ components/ pages/ model/
+features/   auth | study | exams | samples — mỗi tính năng có api/ hooks/ components/ pages/ model/
 ```
 
 - **Một cổng gọi API** (`lib/http/client.ts`): tự gỡ `ApiResponse`, chuyển mọi lỗi thành `ApiError`, tự thêm header CSRF, báo phiên hết hạn để xóa cache.
@@ -141,6 +142,6 @@ CSDL cũ dùng được nguyên trạng: Flyway nhận V1–V5 làm điểm xu�
 - Giới hạn tốc độ: theo IP (đọc đúng IP thật qua proxy tin cậy) và theo email khi đăng nhập sai; phản hồi 429 + `Retry-After`.
 - Google: Authorization Code + PKCE, `state`, `nonce`, kiểm tra ID token; chỉ lưu email đã được Google xác minh.
 - Header: CSP (script chỉ `'self'`), HSTS, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, COOP/CORP; API luôn `Cache-Control: no-store`.
-- Mặc định từ chối: API không khai báo quyền thì bị chặn; chỉ `/api/exams` (GET), phiên và đăng nhập là công khai.
+- Mặc định từ chối: API không khai báo quyền thì bị chặn; chỉ `/api/exams` và `/api/samples` (GET), phiên và đăng nhập là công khai.
 
 **Hạn chế đã biết:** đăng ký chưa xác minh email, và thông báo "email đã tồn tại" cho phép dò email (được giảm nhẹ bằng giới hạn tốc độ). Khắc phục triệt để cần gửi email xác minh (SMTP).

@@ -7,12 +7,22 @@ import { authApi } from '../api/auth-api'
 import { SignInPanel } from './SignInPanel'
 
 vi.mock('../api/auth-api', () => ({
-  authApi: { getSession: vi.fn(), login: vi.fn(), register: vi.fn(), logout: vi.fn(), googleLoginUrl: '/api/auth/oauth2/google' },
+  authApi: {
+    getSession: vi.fn(),
+    login: vi.fn(),
+    register: vi.fn(),
+    logout: vi.fn(),
+    googleLoginUrl: '/api/auth/oauth2/google',
+  },
 }))
 
 function renderPanel(authResult?: string) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  render(<QueryClientProvider client={client}><SignInPanel authResult={authResult} /></QueryClientProvider>)
+  render(
+    <QueryClientProvider client={client}>
+      <SignInPanel authResult={authResult} />
+    </QueryClientProvider>,
+  )
   return client
 }
 
@@ -39,12 +49,19 @@ describe('SignInPanel', () => {
     await user.type(screen.getByLabelText('Mật khẩu'), 'a-long-password-123')
     await user.click(screen.getByRole('button', { name: 'Đăng nhập' }))
     await waitFor(() => expect(authApi.login).toHaveBeenCalled())
-    expect(vi.mocked(authApi.login).mock.calls[0]?.[0]).toEqual({ email: 'a@b.co', password: 'a-long-password-123' })
-    await waitFor(() => expect(client.getQueryData(['auth', 'session'])).toMatchObject({ user: { id: 'u1' } }))
+    expect(vi.mocked(authApi.login).mock.calls[0]?.[0]).toEqual({
+      email: 'a@b.co',
+      password: 'a-long-password-123',
+    })
+    await waitFor(() =>
+      expect(client.getQueryData(['auth', 'session'])).toMatchObject({ user: { id: 'u1' } }),
+    )
   })
 
   it('shows the server message on bad credentials', async () => {
-    vi.mocked(authApi.login).mockRejectedValue(new ApiError('BAD_CREDENTIALS', 'Email hoặc mật khẩu không đúng.', 401))
+    vi.mocked(authApi.login).mockRejectedValue(
+      new ApiError('BAD_CREDENTIALS', 'Email hoặc mật khẩu không đúng.', 401),
+    )
     renderPanel()
     const user = userEvent.setup()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Đăng nhập' })).toBeEnabled())

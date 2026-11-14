@@ -17,8 +17,16 @@ export default function GoalPage() {
 
   return (
     <>
-      <PageHeader eyebrow="BẮT ĐẦU HÀNH TRÌNH" title="Thiết lập mục tiêu" description="Bạn đặt đích đến. MyStudy chia nhỏ thành từng ngày." />
-      <GoalForm key={goal.data.plan?.id ?? 'new'} savedGoal={goal.data.goal} onSaved={() => void navigate(paths.plan)} />
+      <PageHeader
+        eyebrow="BẮT ĐẦU HÀNH TRÌNH"
+        title="Thiết lập mục tiêu"
+        description="Bạn đặt đích đến. MyStudy chia nhỏ thành từng ngày."
+      />
+      <GoalForm
+        key={goal.data.plan?.id ?? 'new'}
+        savedGoal={goal.data.goal}
+        onSaved={() => void navigate(paths.plan)}
+      />
     </>
   )
 }

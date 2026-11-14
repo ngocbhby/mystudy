@@ -30,7 +30,7 @@ spring:
         format_sql: false
   datasource:
     hikari:
-      maximum-pool-size: 10
+      maximum-pool-size: 5
       connection-timeout: 5000
   lifecycle:
     timeout-per-shutdown-phase: 20s
@@ -55,6 +55,8 @@ server:
     include-stacktrace: never
     include-binding-errors: never
   tomcat:
+    threads:
+      max: 40
     max-swallow-size: 64KB
     max-http-form-post-size: 16KB
 

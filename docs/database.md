@@ -69,6 +69,7 @@ Schema do **Flyway** quản lý: các file `backend/src/main/resources/db/migrat
 | V5 | Kho đề: 3 PDF tham khảo 2025 và đề luyện Toán. |
 | V6 | Chuyển sang Spring Security: gắn nhãn `{legacyscrypt}` cho mã băm scrypt cũ (tự nâng cấp lên Argon2 khi đăng nhập), thêm ràng buộc định dạng mã băm, xóa bảng phiên/OAuth cũ. |
 | V7 | Bảng `spring_session` và `spring_session_attributes`. |
+| V8 | Kho bài mẫu: chuyên đề phân loại (Hàm số, Nghị luận xã hội, Kĩ năng viết) và ba bài mẫu đầu tiên. |
 
 **CSDL đã tạo từ bản Node.js** (đã chạy tay V1–V5): cấu hình `baseline-version: 5` cho Flyway nhận đó làm điểm xuất phát, nên lần khởi động đầu chỉ chạy V6 và V7. Người dùng đang đăng nhập sẽ phải đăng nhập lại một lần vì phiên cũ bị xóa. Tài khoản email cũ vẫn đăng nhập được với mật khẩu hiện tại.
 

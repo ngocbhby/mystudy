@@ -6,6 +6,7 @@ export const paths = {
   plan: '/lo-trinh',
   goal: '/thiet-lap-muc-tieu',
   exams: '/kho-de-thi',
+  samples: '/kho-bai-mau',
   practice: '/thi-thu',
   exam: (id: string) => `/thi-thu/${id}`,
   examPaper: (id: string) => `/thi-thu/${id}/de`,

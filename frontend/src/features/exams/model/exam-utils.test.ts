@@ -8,7 +8,9 @@ describe('exam utils', () => {
 
   it('only allows https and same-origin document links', () => {
     const origin = 'https://mystudy.example'
-    expect(safeDocumentUrl('/tai-lieu/x.pdf#page=5', origin)).toBe('https://mystudy.example/tai-lieu/x.pdf#page=5')
+    expect(safeDocumentUrl('/tai-lieu/x.pdf#page=5', origin)).toBe(
+      'https://mystudy.example/tai-lieu/x.pdf#page=5',
+    )
     expect(safeDocumentUrl('https://cdn.example/x.pdf', origin)).toBe('https://cdn.example/x.pdf')
     expect(safeDocumentUrl('javascript:alert(1)', origin)).toBeUndefined()
     expect(safeDocumentUrl('http://evil.example/x.pdf', origin)).toBeUndefined()

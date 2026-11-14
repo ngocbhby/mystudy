@@ -20,7 +20,12 @@ describe('api client', () => {
   })
 
   it('unwraps the ApiResponse envelope', async () => {
-    http.defaults.adapter = respond(200, { success: true, code: 'OK', message: 'Thành công', data: { hello: 'world' } })
+    http.defaults.adapter = respond(200, {
+      success: true,
+      code: 'OK',
+      message: 'Thành công',
+      data: { hello: 'world' },
+    })
     await expect(api.get('/api/anything')).resolves.toEqual({ hello: 'world' })
   })
 
@@ -32,15 +37,26 @@ describe('api client', () => {
 
   it('turns error envelopes into ApiError with field errors', async () => {
     http.defaults.adapter = respond(400, {
-      success: false, code: 'VALIDATION_FAILED', message: 'Kiểm tra lại', errors: { months: 'sai' }, requestId: 'r-1',
+      success: false,
+      code: 'VALIDATION_FAILED',
+      message: 'Kiểm tra lại',
+      errors: { months: 'sai' },
+      requestId: 'r-1',
     })
     const error = await api.get('/api/x').catch((e: unknown) => e)
     expect(error).toBeInstanceOf(ApiError)
-    expect(error).toMatchObject({ code: 'VALIDATION_FAILED', status: 400, fieldErrors: { months: 'sai' }, requestId: 'r-1' })
+    expect(error).toMatchObject({
+      code: 'VALIDATION_FAILED',
+      status: 400,
+      fieldErrors: { months: 'sai' },
+      requestId: 'r-1',
+    })
   })
 
   it('maps connection failures to NETWORK_ERROR', async () => {
-    http.defaults.adapter = async (config) => { throw new AxiosError('down', 'ERR_NETWORK', config) }
+    http.defaults.adapter = async (config) => {
+      throw new AxiosError('down', 'ERR_NETWORK', config)
+    }
     await expect(api.get('/api/x')).rejects.toMatchObject({ code: 'NETWORK_ERROR' })
   })
 
@@ -62,7 +78,13 @@ describe('api client', () => {
     http.defaults.adapter = async (config) => {
       calls.push(`${config.method} ${config.url}`)
       if (config.url === '/api/session') document.cookie = 'XSRF-TOKEN=fresh'
-      return { data: { success: true, code: 'OK', message: '', data: null }, status: 200, statusText: '', headers: {}, config } as AxiosResponse
+      return {
+        data: { success: true, code: 'OK', message: '', data: null },
+        status: 200,
+        statusText: '',
+        headers: {},
+        config,
+      } as AxiosResponse
     }
     await api.post('/api/auth/login', {})
     expect(calls).toEqual(['get /api/session', 'post /api/auth/login'])

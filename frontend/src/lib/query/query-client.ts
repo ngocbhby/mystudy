@@ -10,7 +10,8 @@ export function createQueryClient() {
         gcTime: 5 * 60_000,
         refetchOnWindowFocus: false,
         // Không thử lại lỗi 4xx (sai dữ liệu, chưa đăng nhập); chỉ thử lại lỗi mạng/máy chủ.
-        retry: (failureCount, error) => !(error instanceof ApiError && error.isClientError) && failureCount < 2,
+        retry: (failureCount, error) =>
+          !(error instanceof ApiError && error.isClientError) && failureCount < 2,
       },
       mutations: { retry: false },
     },

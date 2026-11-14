@@ -83,7 +83,7 @@ class SecurityConfig {
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health/**").permitAll()
                 .requestMatchers("/api/session", "/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/exams", "/api/exams/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/exams", "/api/exams/**", "/api/samples").permitAll()
                 .requestMatchers("/api/study/**").authenticated()
                 .requestMatchers("/api/**").denyAll()
                 .requestMatchers(HttpMethod.GET, "/**").permitAll()
