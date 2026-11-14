@@ -24,7 +24,7 @@ class DatabaseConfig {
     @ConditionalOnExpression("!'${app.database-url:}'.isBlank()")
     DataSource dataSource(AppProperties properties) {
         HikariConfig config = toHikariConfig(properties.databaseUrl());
-        config.setMaximumPoolSize(10);
+        config.setMaximumPoolSize(5);
         config.setConnectionTimeout(5_000);
         config.setPoolName("mystudy");
         return new HikariDataSource(config);
