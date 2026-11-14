@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { getWeeklyHoursEstimate, goalFormSchema, initialGoal, toFormField, toFormValues, toGoalInput } from './goal-form'
+import {
+  getWeeklyHoursEstimate,
+  goalFormSchema,
+  initialGoal,
+  toFormField,
+  toFormValues,
+  toGoalInput,
+} from './goal-form'
 
 const valid = () => toFormValues(initialGoal)
 
@@ -16,12 +23,25 @@ describe('goal form schema', () => {
 
   it('reports field-level errors', () => {
     const result = goalFormSchema.safeParse({
-      ...valid(), electiveCodes: ['physics', 'physics'], scores: { math: '11', literature: 'x', physics: '8', english: '8' },
-      months: '25', dailyHours: '0', days: [],
+      ...valid(),
+      electiveCodes: ['physics', 'physics'],
+      scores: { math: '11', literature: 'x', physics: '8', english: '8' },
+      months: '25',
+      dailyHours: '0',
+      days: [],
     })
     expect(result.success).toBe(false)
     const paths = result.error!.issues.map((i) => i.path.join('.'))
-    expect(paths).toEqual(expect.arrayContaining(['electiveCodes', 'scores.math', 'scores.literature', 'months', 'dailyHours', 'days']))
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        'electiveCodes',
+        'scores.math',
+        'scores.literature',
+        'months',
+        'dailyHours',
+        'days',
+      ]),
+    )
   })
 
   it('rejects fractional months', () => {
@@ -31,14 +51,26 @@ describe('goal form schema', () => {
 
 describe('weekly hours estimate', () => {
   it('scales with purpose, scores and a short deadline', () => {
-    const base = { purpose: 'university_admission' as const, electiveCodes: initialGoal.electiveCodes, scores: initialGoal.scores, months: 6 }
+    const base = {
+      purpose: 'university_admission' as const,
+      electiveCodes: initialGoal.electiveCodes,
+      scores: initialGoal.scores,
+      months: 6,
+    }
     const normal = getWeeklyHoursEstimate(base)!
     expect(getWeeklyHoursEstimate({ ...base, purpose: 'graduation' })!).toBeLessThan(normal)
     expect(getWeeklyHoursEstimate({ ...base, months: 3 })!).toBeGreaterThan(normal)
   })
 
   it('returns null when a score is missing', () => {
-    expect(getWeeklyHoursEstimate({ purpose: 'graduation', electiveCodes: ['physics', 'english'], scores: { math: 8 }, months: 6 })).toBeNull()
+    expect(
+      getWeeklyHoursEstimate({
+        purpose: 'graduation',
+        electiveCodes: ['physics', 'english'],
+        scores: { math: 8 },
+        months: 6,
+      }),
+    ).toBeNull()
   })
 })
 

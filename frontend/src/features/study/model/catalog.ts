@@ -22,7 +22,8 @@ export type PurposeCode = (typeof purposes)[number]['code']
 
 export const requiredSubjects = ['math', 'literature'] as const satisfies readonly SubjectCode[]
 export const electives = (Object.keys(subjects) as SubjectCode[]).filter(
-  (code): code is Exclude<SubjectCode, 'math' | 'literature'> => !(requiredSubjects as readonly string[]).includes(code),
+  (code): code is Exclude<SubjectCode, 'math' | 'literature'> =>
+    !(requiredSubjects as readonly string[]).includes(code),
 )
 
 export const subjectName = (code: string): string => subjects[code as SubjectCode] ?? code
@@ -38,6 +39,14 @@ export const weekdays = [
 ] as const
 
 export const strategies = [
-  { code: 'exam_focused', label: 'Sát đề', detail: 'Tập trung dạng bài thường gặp, luyện đề và sửa lỗi để tăng tốc.' },
-  { code: 'foundation_first', label: 'Nền tảng → điểm cao', detail: 'Củng cố kiến thức cốt lõi, rồi nâng dần độ khó theo mục tiêu.' },
+  {
+    code: 'exam_focused',
+    label: 'Sát đề',
+    detail: 'Tập trung dạng bài thường gặp, luyện đề và sửa lỗi để tăng tốc.',
+  },
+  {
+    code: 'foundation_first',
+    label: 'Nền tảng → điểm cao',
+    detail: 'Củng cố kiến thức cốt lõi, rồi nâng dần độ khó theo mục tiêu.',
+  },
 ] as const

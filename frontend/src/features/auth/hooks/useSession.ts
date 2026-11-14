@@ -13,7 +13,10 @@ function useEstablishSession(mutationFn: (credentials: Credentials) => ReturnTyp
   return useMutation({
     mutationFn,
     onSuccess: (user) => {
-      queryClient.setQueryData<Session>(authKeys.session, (old) => ({ googleEnabled: old?.googleEnabled ?? false, user }))
+      queryClient.setQueryData<Session>(authKeys.session, (old) => ({
+        googleEnabled: old?.googleEnabled ?? false,
+        user,
+      }))
     },
   })
 }
@@ -26,7 +29,10 @@ export function useResetSession() {
   const queryClient = useQueryClient()
   return () => {
     queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== 'auth' })
-    queryClient.setQueryData<Session>(authKeys.session, (old) => ({ googleEnabled: old?.googleEnabled ?? false, user: null }))
+    queryClient.setQueryData<Session>(authKeys.session, (old) => ({
+      googleEnabled: old?.googleEnabled ?? false,
+      user: null,
+    }))
   }
 }
 

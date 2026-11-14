@@ -11,8 +11,14 @@ export function ErrorNotice({ error, onRetry }: Props) {
   const message = error instanceof ApiError ? error.message : 'Đã xảy ra lỗi. Vui lòng thử lại.'
   return (
     <Stack spacing={1.5} role="alert" sx={{ alignItems: 'flex-start' }}>
-      <Alert severity="error" sx={{ width: '100%' }}>{message}</Alert>
-      {onRetry && <Button variant="outlined" onClick={onRetry}>Thử lại</Button>}
+      <Alert severity="error" sx={{ width: '100%' }}>
+        {message}
+      </Alert>
+      {onRetry && (
+        <Button variant="outlined" onClick={onRetry}>
+          Thử lại
+        </Button>
+      )}
     </Stack>
   )
 }

@@ -2,9 +2,20 @@ import { AxiosError } from 'axios'
 import type { ApiEnvelope } from './types'
 
 export type ApiErrorCode =
-  | 'BAD_REQUEST' | 'VALIDATION_FAILED' | 'UNAUTHENTICATED' | 'BAD_CREDENTIALS' | 'FORBIDDEN' | 'NOT_FOUND'
-  | 'METHOD_NOT_ALLOWED' | 'CONFLICT' | 'RATE_LIMITED' | 'INTERNAL_ERROR' | 'SERVICE_UNAVAILABLE'
-  | 'NETWORK_ERROR' | 'TIMEOUT' | 'UNKNOWN'
+  | 'BAD_REQUEST'
+  | 'VALIDATION_FAILED'
+  | 'UNAUTHENTICATED'
+  | 'BAD_CREDENTIALS'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'METHOD_NOT_ALLOWED'
+  | 'CONFLICT'
+  | 'RATE_LIMITED'
+  | 'INTERNAL_ERROR'
+  | 'SERVICE_UNAVAILABLE'
+  | 'NETWORK_ERROR'
+  | 'TIMEOUT'
+  | 'UNKNOWN'
 
 const NETWORK_MESSAGE = 'Không thể kết nối với máy chủ. Vui lòng thử lại.'
 

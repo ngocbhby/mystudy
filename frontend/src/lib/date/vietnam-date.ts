@@ -19,7 +19,12 @@ export function getStudyEndDate(startsOn: string, months: number): Date {
   return end
 }
 
-const fullDate = new Intl.DateTimeFormat('vi-VN', { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' })
+const fullDate = new Intl.DateTimeFormat('vi-VN', {
+  timeZone: 'UTC',
+  weekday: 'long',
+  day: 'numeric',
+  month: 'long',
+})
 
 /** "Thứ Hai, 16 tháng 11" cho một ngày yyyy-MM-dd. */
 export const formatFullDate = (iso: string) => fullDate.format(new Date(iso + 'T00:00:00Z'))

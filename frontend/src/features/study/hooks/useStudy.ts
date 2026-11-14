@@ -5,7 +5,12 @@ import { studyKeys } from '../api/keys'
 import type { GoalInput, StudyGoalData } from '../model/types'
 
 export function useStudyGoal(enabled = true) {
-  return useQuery({ queryKey: studyKeys.goal(), queryFn: studyApi.getGoal, staleTime: staleTimes.goal, enabled })
+  return useQuery({
+    queryKey: studyKeys.goal(),
+    queryFn: studyApi.getGoal,
+    staleTime: staleTimes.goal,
+    enabled,
+  })
 }
 
 /** `today` nằm trong khóa cache nên sang ngày mới dữ liệu tự được nạp lại. */

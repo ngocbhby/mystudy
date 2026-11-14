@@ -21,7 +21,11 @@ export function getStudyWeek(now: Date = new Date(), offset = 0): { days: WeekDa
     date.setUTCDate(date.getUTCDate() + index)
     const iso = date.toISOString().slice(0, 10)
     return {
-      label: short, iso, day: date.getUTCDate(), month: date.getUTCMonth() + 1, year: date.getUTCFullYear(),
+      label: short,
+      iso,
+      day: date.getUTCDate(),
+      month: date.getUTCMonth() + 1,
+      year: date.getUTCFullYear(),
       isToday: iso === today,
     }
   })
@@ -32,8 +36,10 @@ export function formatWeekRange(days: WeekDay[]): string {
   const first = days[0]
   const last = days[days.length - 1]
   if (!first || !last) return ''
-  if (first.year !== last.year) return `${first.day}/${first.month}/${first.year} – ${last.day}/${last.month}/${last.year}`
-  if (first.month !== last.month) return `${first.day}/${first.month} – ${last.day}/${last.month}, ${last.year}`
+  if (first.year !== last.year)
+    return `${first.day}/${first.month}/${first.year} – ${last.day}/${last.month}/${last.year}`
+  if (first.month !== last.month)
+    return `${first.day}/${first.month} – ${last.day}/${last.month}, ${last.year}`
   return `${first.day} – ${last.day} tháng ${last.month}, ${last.year}`
 }
 

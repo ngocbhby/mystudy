@@ -1,6 +1,11 @@
 import { z } from 'zod'
 
-const email = z.string().trim().min(1, 'Vui lòng nhập email.').max(254, 'Email quá dài.').regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Email không hợp lệ.')
+const email = z
+  .string()
+  .trim()
+  .min(1, 'Vui lòng nhập email.')
+  .max(254, 'Email quá dài.')
+  .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Email không hợp lệ.')
 
 export const loginSchema = z.object({
   email,

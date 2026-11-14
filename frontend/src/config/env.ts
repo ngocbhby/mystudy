@@ -9,7 +9,9 @@ const schema = z.object({
 
 const parsed = schema.safeParse(import.meta.env)
 if (!parsed.success) {
-  throw new Error(`Cấu hình môi trường không hợp lệ: ${parsed.error.issues.map((i) => i.path.join('.')).join(', ')}`)
+  throw new Error(
+    `Cấu hình môi trường không hợp lệ: ${parsed.error.issues.map((i) => i.path.join('.')).join(', ')}`,
+  )
 }
 
 /** Cấu hình môi trường đã kiểm tra kiểu. Mọi nơi trong ứng dụng đọc từ đây, không dùng import.meta.env trực tiếp. */

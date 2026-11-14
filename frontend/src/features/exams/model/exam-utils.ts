@@ -3,7 +3,10 @@ const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 export const optionLabel = (number: number): string => letters[number - 1] ?? String(number)
 
 /** Chỉ cho mở liên kết https hoặc cùng origin (chặn javascript:, data:...). */
-export function safeDocumentUrl(path: string | undefined, origin = window.location.origin): string | undefined {
+export function safeDocumentUrl(
+  path: string | undefined,
+  origin = window.location.origin,
+): string | undefined {
   if (typeof path !== 'string') return undefined
   try {
     const url = new URL(path, origin)

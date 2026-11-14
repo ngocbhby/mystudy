@@ -6,7 +6,13 @@ describe('study week', () => {
     // 2026-11-14 (Thứ Bảy) 20:00 UTC đã là 03:00 ngày 15 (Chủ nhật) ở Việt Nam.
     const { days, range } = getStudyWeek(new Date('2026-11-14T20:00:00Z'))
     expect(days.map((d) => d.iso)).toEqual([
-      '2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13', '2026-11-14', '2026-11-15',
+      '2026-11-09',
+      '2026-11-10',
+      '2026-11-11',
+      '2026-11-12',
+      '2026-11-13',
+      '2026-11-14',
+      '2026-11-15',
     ])
     expect(days.find((d) => d.isToday)?.iso).toBe('2026-11-15')
     expect(range).toBe('9 – 15 tháng 11, 2026')
