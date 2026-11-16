@@ -19,8 +19,8 @@ class GoogleClientConfig {
     @ConditionalOnExpression("!'${app.google-client-id:}'.isBlank() && !'${app.google-client-secret:}'.isBlank()")
     ClientRegistrationRepository clientRegistrationRepository(AppProperties properties) {
         ClientRegistration google = CommonOAuth2Provider.GOOGLE.getBuilder(REGISTRATION_ID)
-                .clientId(properties.googleClientId())
-                .clientSecret(properties.googleClientSecret())
+                .clientId(properties.googleClientId().trim())
+                .clientSecret(properties.googleClientSecret().trim())
                 .scope("openid", "email", "profile")
                 .redirectUri(properties.origin().toString().replaceAll("/$", "") + "/api/auth/google/callback")
                 .build();

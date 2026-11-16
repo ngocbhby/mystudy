@@ -38,8 +38,7 @@ spring:
 server:
   port: ${PORT:8080}
   shutdown: graceful
-  # Render (và hầu hết reverse proxy) chuyển tiếp qua X-Forwarded-*; Tomcat chỉ tin proxy nội bộ.
-  forward-headers-strategy: native
+  forward-headers-strategy: framework
   max-http-request-header-size: 16KB
   servlet:
     session:

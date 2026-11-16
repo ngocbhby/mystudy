@@ -89,16 +89,19 @@ class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public UUID linkGoogleAccount(String subject, String verifiedEmail, String displayName) {
+        String email = normalize(verifiedEmail);
         Profile profile = profiles.findByGoogleSub(subject).orElse(null);
         if (profile == null) {
-            Profile existingByEmail = profiles.findFirstByEmailIgnoreCase(normalize(verifiedEmail)).orElse(null);
-            if (existingByEmail != null) {
-                existingByEmail.linkGoogle(subject, normalize(verifiedEmail), displayName);
-                return existingByEmail.getId();
+            if (email != null && !email.isBlank()) {
+                Profile existingByEmail = profiles.findFirstByEmailIgnoreCase(email).orElse(null);
+                if (existingByEmail != null) {
+                    existingByEmail.linkGoogle(subject, email, displayName);
+                    return existingByEmail.getId();
+                }
             }
-            return profiles.saveAndFlush(Profile.fromGoogle(subject, normalize(verifiedEmail), displayName)).getId();
+            return profiles.saveAndFlush(Profile.fromGoogle(subject, email, displayName)).getId();
         }
-        profile.updateFromGoogle(normalize(verifiedEmail), displayName);
+        profile.updateFromGoogle(email, displayName);
         return profile.getId();
     }
 
@@ -113,6 +116,6 @@ class AuthServiceImpl implements AuthService {
     }
 
     private static String normalize(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
+        return email == null ? null : email.trim().toLowerCase(Locale.ROOT);
     }
 }

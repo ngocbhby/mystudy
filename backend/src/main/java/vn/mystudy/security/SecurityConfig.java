@@ -124,7 +124,7 @@ class SecurityConfig {
     private static void redirectWithFailure(String error, Exception ex, jakarta.servlet.http.HttpServletResponse res)
             throws IOException {
         boolean cancelled = "access_denied".equals(error);
-        if (!cancelled) log.warn("Google sign-in failed: {}", ex.getClass().getSimpleName());
+        if (!cancelled) log.warn("Google sign-in failed ({}): {}", ex.getClass().getSimpleName(), ex.getMessage(), ex);
         res.sendRedirect(cancelled ? "/?auth=cancelled" : "/?auth=failed");
     }
 }
