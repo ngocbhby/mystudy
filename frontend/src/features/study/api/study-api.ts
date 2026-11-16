@@ -8,4 +8,5 @@ export const studyApi = {
   getTasks: (from: string, to: string) =>
     api.get<{ tasks: Task[] }>('/api/study/tasks', { params: { from, to } }).then((r) => r.tasks),
   completeTask: (id: string) => api.post<void>('/api/study/tasks', { id }),
+  uncompleteTask: (id: string) => api.delete<void>(`/api/study/tasks/${id}`),
 }

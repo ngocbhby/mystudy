@@ -91,9 +91,14 @@ class AuthServiceImpl implements AuthService {
     public UUID linkGoogleAccount(String subject, String verifiedEmail, String displayName) {
         Profile profile = profiles.findByGoogleSub(subject).orElse(null);
         if (profile == null) {
-            return profiles.saveAndFlush(Profile.fromGoogle(subject, verifiedEmail, displayName)).getId();
+            Profile existingByEmail = profiles.findFirstByEmailIgnoreCase(normalize(verifiedEmail)).orElse(null);
+            if (existingByEmail != null) {
+                existingByEmail.linkGoogle(subject, normalize(verifiedEmail), displayName);
+                return existingByEmail.getId();
+            }
+            return profiles.saveAndFlush(Profile.fromGoogle(subject, normalize(verifiedEmail), displayName)).getId();
         }
-        profile.updateFromGoogle(verifiedEmail, displayName);
+        profile.updateFromGoogle(normalize(verifiedEmail), displayName);
         return profile.getId();
     }
 

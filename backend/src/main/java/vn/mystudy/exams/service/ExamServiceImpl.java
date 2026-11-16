@@ -77,10 +77,8 @@ class ExamServiceImpl implements ExamService {
                 .sorted(EXAM_ORDER)
                 .toList();
 
-        List<Exam> all = exams.findAll();
-        List<String> subjects = all.stream().map(Exam::getSubjectCode).distinct().toList();
-        List<Integer> years = all.stream().map(Exam::getExamYear).filter(Objects::nonNull).distinct()
-                .sorted(Comparator.reverseOrder()).toList();
+        List<String> subjects = exams.findDistinctSubjectCodes();
+        List<Integer> years = exams.findDistinctExamYears();
         return new ExamListResponse(result, subjects, years);
     }
 
@@ -94,9 +92,7 @@ class ExamServiceImpl implements ExamService {
     }
 
     private ExamVersion latestPublished(UUID examId) {
-        return versions.findByPublishedAtLessThanEqual(Instant.now()).stream()
-                .filter(v -> v.getExamId().equals(examId))
-                .max(Comparator.comparingInt(ExamVersion::getVersionNumber))
+        return versions.findFirstByExamIdAndPublishedAtLessThanEqualOrderByVersionNumberDesc(examId, Instant.now())
                 .orElseThrow(ExamServiceImpl::notFound);
     }
 

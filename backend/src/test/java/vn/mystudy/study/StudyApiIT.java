@@ -77,6 +77,13 @@ class StudyApiIT extends IntegrationTest {
                 .andExpect(jsonPath("$.data.tasks[0].completed").value(true))
                 .andExpect(jsonPath("$.data.streakDays").value(1));
 
+        client.delete("/api/study/tasks/" + taskId).andExpect(status().isOk());
+        client.get("/api/study/overview")
+                .andExpect(jsonPath("$.data.tasks[0].completed").value(false))
+                .andExpect(jsonPath("$.data.streakDays").value(0));
+
+        client.post("/api/study/tasks", "{\"id\":\"" + taskId + "\"}").andExpect(status().isOk());
+
         client.post("/api/study/goal", GOAL.replace("\"days\"", "\"strategy\":\"foundation_first\",\"days\""))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.data.plan.strategy").value("foundation_first"));

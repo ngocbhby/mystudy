@@ -59,3 +59,15 @@ export function useCompleteTask() {
       ]),
   })
 }
+
+export function useUncompleteTask() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => studyApi.uncompleteTask(id),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: studyKeys.overviews() }),
+        queryClient.invalidateQueries({ queryKey: studyKeys.allTasks() }),
+      ]),
+  })
+}

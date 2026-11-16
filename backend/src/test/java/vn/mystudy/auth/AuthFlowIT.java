@@ -20,6 +20,7 @@ class AuthFlowIT extends IntegrationTest {
 
     @Autowired MockMvc mvc;
     @Autowired JdbcTemplate jdbc;
+    @Autowired vn.mystudy.auth.service.AuthService authService;
 
     private static String email() {
         return "user-" + UUID.randomUUID() + "@example.com";
@@ -119,5 +120,20 @@ class AuthFlowIT extends IntegrationTest {
 
         String stored = jdbc.queryForObject("select password_hash from profiles where email = ?", String.class, email);
         assertThat(stored).startsWith("{argon2}");
+    }
+
+    @Test
+    void linkingGoogleToExistingEmailPreservesProfile() throws Exception {
+        TestClient client = new TestClient(mvc);
+        String email = email();
+        client.get("/api/session");
+        client.post("/api/auth/register", credentials(email, "a-long-password-123")).andExpect(status().isCreated());
+
+        UUID existingId = jdbc.queryForObject("select id from profiles where email = ?", UUID.class, email);
+        UUID linkedId = authService.linkGoogleAccount("google-sub-" + UUID.randomUUID(), email, "Học sinh");
+
+        assertThat(linkedId).isEqualTo(existingId);
+        Integer count = jdbc.queryForObject("select count(*) from profiles where email = ?", Integer.class, email);
+        assertThat(count).isEqualTo(1);
     }
 }
