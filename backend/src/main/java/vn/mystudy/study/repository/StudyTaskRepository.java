@@ -36,6 +36,12 @@ public interface StudyTaskRepository extends JpaRepository<StudyTask, UUID> {
     int markCompleted(@Param("id") UUID id, @Param("profileId") UUID profileId, @Param("today") LocalDate today,
             @Param("now") Instant now);
 
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            update StudyTask t set t.completedAt = null
+            where t.id = :id and t.profileId = :profileId and t.completedAt is not null and t.cancelledAt is null""")
+    int unmarkCompleted(@Param("id") UUID id, @Param("profileId") UUID profileId);
+
     @Query("select min(t.scheduledOn) from StudyTask t where t.profileId = :profileId and t.scheduledOn > :today and t.cancelledAt is null")
     LocalDate findNextStudyDate(@Param("profileId") UUID profileId, @Param("today") LocalDate today);
 

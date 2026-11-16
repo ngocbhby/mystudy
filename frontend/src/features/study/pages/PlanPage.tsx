@@ -23,7 +23,7 @@ import { LoadingState } from '@/shared/components/LoadingState'
 import { Kicker } from '@/shared/components/PageHeader'
 import { useCurrentTime } from '@/shared/hooks/useCurrentTime'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
-import { useCompleteTask, useSaveGoal, useStudyGoal, useWeekTasks } from '../hooks/useStudy'
+import { useCompleteTask, useSaveGoal, useStudyGoal, useUncompleteTask, useWeekTasks } from '../hooks/useStudy'
 import { formatWeekRange, getPlanPeriod, getStudyWeek, type WeekDay } from '../model/calendar'
 import { purposes, strategies, subjectName, weekdays } from '../model/catalog'
 import type { Goal, Plan, Strategy, Task } from '../model/types'
@@ -123,6 +123,9 @@ function StrategyPicker({ goal, plan, onSaved }: { goal: Goal; plan: Plan; onSav
 
 function TaskItem({ task, today }: { task: Task; today: string }) {
   const complete = useCompleteTask()
+  const uncomplete = useUncompleteTask()
+  const saving = complete.isPending || uncomplete.isPending
+  const error = complete.error?.message ?? uncomplete.error?.message
   return (
     <Accordion
       disableGutters
@@ -159,20 +162,33 @@ function TaskItem({ task, today }: { task: Task; today: string }) {
       </AccordionSummary>
       <AccordionDetails sx={{ px: 1.5, pt: 0 }}>
         <Typography variant="body2">{task.content}</Typography>
-        {!task.completed && task.date <= today && (
+        {task.completed ? (
           <Button
             size="small"
-            variant="contained"
-            sx={{ mt: 1.5 }}
-            disabled={complete.isPending}
-            onClick={() => complete.mutate(task.id)}
+            variant="text"
+            color="inherit"
+            sx={{ mt: 1.5, textDecoration: 'underline', color: 'text.secondary', display: 'block' }}
+            disabled={saving}
+            onClick={() => uncomplete.mutate(task.id)}
           >
-            {complete.isPending ? 'Đang lưu…' : 'Đánh dấu đã học'}
+            {uncomplete.isPending ? 'Đang hủy…' : 'Hủy đánh dấu đã học'}
           </Button>
+        ) : (
+          task.date <= today && (
+            <Button
+              size="small"
+              variant="contained"
+              sx={{ mt: 1.5 }}
+              disabled={saving}
+              onClick={() => complete.mutate(task.id)}
+            >
+              {complete.isPending ? 'Đang lưu…' : 'Đánh dấu đã học'}
+            </Button>
+          )
         )}
-        {complete.isError && (
+        {error && (
           <Alert severity="error" role="alert" sx={{ mt: 1 }}>
-            {complete.error.message}
+            {error}
           </Alert>
         )}
       </AccordionDetails>

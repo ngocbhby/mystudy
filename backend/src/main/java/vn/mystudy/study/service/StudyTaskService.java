@@ -14,4 +14,7 @@ public interface StudyTaskService {
 
     /** Đánh dấu đã học; ném NOT_FOUND nếu nhiệm vụ không thuộc người dùng, chưa tới ngày học hoặc đã hủy. */
     void complete(UUID profileId, UUID taskId);
+
+    /** Hủy đánh dấu hoàn thành nhiệm vụ nếu người dùng bấm nhầm. */
+    void uncomplete(UUID profileId, UUID taskId);
 }

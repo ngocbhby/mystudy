@@ -56,6 +56,14 @@ class StudyTaskServiceImpl implements StudyTaskService {
         }
     }
 
+    @Override
+    @Transactional
+    public void uncomplete(UUID profileId, UUID taskId) {
+        if (tasks.unmarkCompleted(taskId, profileId) == 0) {
+            throw BusinessException.notFound("Không thể hủy đánh dấu nhiệm vụ này.");
+        }
+    }
+
     /** Số ngày liên tiếp kết thúc hôm nay hoặc hôm qua có ít nhất một nhiệm vụ hoàn thành. */
     static int streakDays(List<LocalDate> completedDays, LocalDate today) {
         TreeSet<LocalDate> days = new TreeSet<>(completedDays.stream().filter(d -> !d.isAfter(today)).toList());

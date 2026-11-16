@@ -31,6 +31,13 @@ public final class TestClient {
         return send(request);
     }
 
+    public ResultActions delete(String url) throws Exception {
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.delete(url);
+        Cookie xsrf = jar.get("XSRF-TOKEN");
+        if (xsrf != null) request.header("X-XSRF-TOKEN", xsrf.getValue());
+        return send(request);
+    }
+
     /** Gửi POST không kèm header CSRF dù cookie đã có. */
     public ResultActions postWithoutCsrf(String url, String json) throws Exception {
         return send(MockMvcRequestBuilders.post(url).contentType(MediaType.APPLICATION_JSON).content(json));

@@ -49,6 +49,14 @@ public class Profile {
         this.displayName = displayName;
     }
 
+    public void linkGoogle(String googleSub, String email, String displayName) {
+        this.googleSub = googleSub;
+        this.email = email;
+        if (displayName != null && !displayName.isBlank() && (this.displayName == null || this.displayName.isBlank())) {
+            this.displayName = displayName;
+        }
+    }
+
     public void changePasswordHash(String passwordHash) {
         this.passwordHash = passwordHash;
     }

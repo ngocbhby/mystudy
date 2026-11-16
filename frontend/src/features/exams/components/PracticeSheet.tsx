@@ -457,18 +457,56 @@ function ExamResult({
   )
 }
 
-/** Luyện tập có bấm giờ và chấm ngay trong tab; chưa lưu lượt thi vào tài khoản. */
+function loadSavedPractice(examId: string): {
+  deadline: number
+  startedAt: number
+  answers: Record<number, number>
+} | null {
+  try {
+    const raw = sessionStorage.getItem(`mystudy_practice_${examId}`)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (data && typeof data.deadline === 'number' && data.deadline > Date.now()) {
+      return data
+    }
+  } catch {
+    // ignore
+  }
+  return null
+}
+
+/** Luyện tập có bấm giờ và chấm ngay trong tab; tự động lưu nháp vào sessionStorage tránh mất bài khi tải lại trang. */
 export function PracticeSheet({ exam, questions }: { exam: ExamSummary; questions: ExamQuestion[] }) {
-  const [phase, setPhase] = useState<Phase>('before')
-  const [deadline, setDeadline] = useState(0)
-  const [startedAt, setStartedAt] = useState(0)
+  const [saved] = useState(() => loadSavedPractice(exam.id))
+  const [phase, setPhase] = useState<Phase>(() => (saved ? 'taking' : 'before'))
+  const [deadline, setDeadline] = useState(() => (saved ? saved.deadline : 0))
+  const [startedAt, setStartedAt] = useState(() => (saved ? saved.startedAt : 0))
   const [now, setNow] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, number>>({})
+  const [answers, setAnswers] = useState<Record<number, number>>(() => (saved ? saved.answers : {}))
   const [result, setResult] = useState<Result | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [grading, setGrading] = useState(false)
   const [gradeError, setGradeError] = useState('')
   const lock = useRef(false)
+
+  useEffect(() => {
+    if (phase === 'taking' && deadline > 0) {
+      try {
+        sessionStorage.setItem(
+          `mystudy_practice_${exam.id}`,
+          JSON.stringify({ deadline, startedAt, answers }),
+        )
+      } catch {
+        // ignore
+      }
+    } else if (phase === 'result' || phase === 'before') {
+      try {
+        sessionStorage.removeItem(`mystudy_practice_${exam.id}`)
+      } catch {
+        // ignore
+      }
+    }
+  }, [phase, exam.id, deadline, startedAt, answers])
 
   const remaining = phase === 'taking' ? Math.max(0, Math.ceil((deadline - now) / 1000)) : 0
   const blankCount = questions.length - Object.keys(answers).length
