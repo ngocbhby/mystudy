@@ -11,8 +11,6 @@ export const adminApi = {
   uploadPdf: async (file: File) => {
     const formData = new FormData()
     formData.append('file', file)
-    return api.post<{ url: string }>('/api/admin/exams/upload-pdf', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    })
+    return api.post<{ url: string }>('/api/admin/exams/upload-pdf', formData)
   },
 }

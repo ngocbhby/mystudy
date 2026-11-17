@@ -58,7 +58,10 @@ class SecurityConfig {
         RequestMatcher api = PathPatternRequestMatcher.withDefaults().matcher("/api/**");
         RequestMatcher documents = PathPatternRequestMatcher.withDefaults().matcher("/tai-lieu/**");
         RequestMatcher uploads = PathPatternRequestMatcher.withDefaults().matcher("/uploads/**");
-        RequestMatcher staticDocs = new org.springframework.security.web.util.matcher.OrRequestMatcher(documents, uploads);
+        RequestMatcher apiDocs = PathPatternRequestMatcher.withDefaults().matcher("/api/documents/**");
+        RequestMatcher staticDocs = new org.springframework.security.web.util.matcher.OrRequestMatcher(documents, uploads, apiDocs);
+        RequestMatcher nonDocumentApi = new org.springframework.security.web.util.matcher.AndRequestMatcher(
+                api, new NegatedRequestMatcher(apiDocs));
 
         http
             .securityContext(c -> c.securityContextRepository(contextRepository))
@@ -78,7 +81,7 @@ class SecurityConfig {
                 // PDF hiển thị bằng trình xem của trình duyệt nên chỉ chặn bị nhúng khung.
                 .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(staticDocs,
                         new StaticHeadersWriter("Content-Security-Policy", "frame-ancestors 'none'")))
-                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(api,
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(nonDocumentApi,
                         new StaticHeadersWriter("Cache-Control", "no-store")))
                 .addHeaderWriter(new StaticHeadersWriter("Permissions-Policy",
                         "camera=(), microphone=(), geolocation=(), payment=(), usb=()"))
@@ -87,7 +90,7 @@ class SecurityConfig {
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health/**").permitAll()
                 .requestMatchers("/api/session", "/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/exams", "/api/exams/**", "/api/samples").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/exams", "/api/exams/**", "/api/samples", "/api/documents/**").permitAll()
                 .requestMatchers("/api/study/**").authenticated()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/**").denyAll()

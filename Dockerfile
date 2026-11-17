@@ -18,6 +18,7 @@ RUN ./mvnw -B -q -DskipTests package
 FROM eclipse-temurin:21-jre
 RUN useradd --system --uid 10001 --no-create-home mystudy
 WORKDIR /app
+RUN mkdir -p /app/uploads && chown -R 10001:10001 /app/uploads
 COPY --from=backend /app/target/mystudy.jar app.jar
 USER 10001
 ENV SPRING_PROFILES_ACTIVE=prod \

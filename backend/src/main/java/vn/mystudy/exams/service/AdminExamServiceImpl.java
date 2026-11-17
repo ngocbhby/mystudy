@@ -23,12 +23,14 @@ import vn.mystudy.exams.entity.ExamQuestion;
 import vn.mystudy.exams.entity.ExamVersion;
 import vn.mystudy.exams.entity.OptionId;
 import vn.mystudy.exams.entity.QuestionId;
+import vn.mystudy.exams.entity.UploadedDocument;
 import vn.mystudy.exams.mapper.ExamMapper;
 import vn.mystudy.exams.repository.ExamAnswerKeyRepository;
 import vn.mystudy.exams.repository.ExamOptionRepository;
 import vn.mystudy.exams.repository.ExamQuestionRepository;
 import vn.mystudy.exams.repository.ExamRepository;
 import vn.mystudy.exams.repository.ExamVersionRepository;
+import vn.mystudy.exams.repository.UploadedDocumentRepository;
 import vn.mystudy.study.StudyCatalog;
 
 @Service
@@ -40,17 +42,20 @@ class AdminExamServiceImpl implements AdminExamService {
     private final ExamQuestionRepository questions;
     private final ExamOptionRepository options;
     private final ExamAnswerKeyRepository answerKeys;
+    private final UploadedDocumentRepository uploadedDocuments;
     private final ExamService examService;
     private final ExamMapper mapper;
 
     AdminExamServiceImpl(ExamRepository exams, ExamVersionRepository versions, ExamQuestionRepository questions,
-            ExamOptionRepository options, ExamAnswerKeyRepository answerKeys, ExamService examService,
+            ExamOptionRepository options, ExamAnswerKeyRepository answerKeys,
+            UploadedDocumentRepository uploadedDocuments, ExamService examService,
             ExamMapper mapper) {
         this.exams = exams;
         this.versions = versions;
         this.questions = questions;
         this.options = options;
         this.answerKeys = answerKeys;
+        this.uploadedDocuments = uploadedDocuments;
         this.examService = examService;
         this.mapper = mapper;
     }
@@ -161,15 +166,13 @@ class AdminExamServiceImpl implements AdminExamService {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Hệ thống chỉ chấp nhận file định dạng .pdf.");
         }
         try {
-            Path uploadsDir = Path.of("uploads");
-            if (!Files.exists(uploadsDir)) {
-                Files.createDirectories(uploadsDir);
-            }
-            String cleanName = originalName.replaceAll("[^a-zA-Z0-9.-]", "_");
-            String storedName = UUID.randomUUID() + "-" + cleanName;
-            Path destination = uploadsDir.resolve(storedName);
-            Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
-            return "/uploads/" + storedName;
+            byte[] bytes = file.getBytes();
+            String contentType = file.getContentType() != null && !file.getContentType().isBlank()
+                    ? file.getContentType()
+                    : "application/pdf";
+            UploadedDocument doc = new UploadedDocument(originalName, contentType, bytes.length, bytes);
+            doc = uploadedDocuments.saveAndFlush(doc);
+            return "/api/documents/" + doc.getId();
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Không thể lưu file tải lên: " + e.getMessage());
         }

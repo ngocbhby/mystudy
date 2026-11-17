@@ -134,4 +134,29 @@ class AdminExamApiIT extends IntegrationTest {
         client.delete("/api/admin/exams/" + examId)
                 .andExpect(status().isOk());
     }
+
+    @Test
+    void adminCanUploadPdfAndRetrieveIt() throws Exception {
+        TestClient client = adminClient();
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file",
+                "toan-2026.pdf",
+                "application/pdf",
+                "%PDF-1.4 Mock Binary PDF Content".getBytes(java.nio.charset.StandardCharsets.UTF_8)
+        );
+
+        var res = client.multipart(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart("/api/admin/exams/upload-pdf").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.url").exists())
+                .andReturn();
+
+        String url = JsonPath.read(res.getResponse().getContentAsString(), "$.data.url");
+        org.assertj.core.api.Assertions.assertThat(url).startsWith("/api/documents/");
+
+        // Kiểm tra truy cập công khai không cần đăng nhập
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(url))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Content-Type", org.hamcrest.Matchers.startsWith("application/pdf")));
+    }
 }

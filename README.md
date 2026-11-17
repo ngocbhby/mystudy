@@ -4,7 +4,7 @@
 
 ---
 
-## 🌟 Các tính năng chính hiện tại của Website
+## Các tính năng chính hiện tại của Website
 
 ### 1. Xác thực & Quản lý Tài khoản (Auth & Identity)
 - **Đa phương thức đăng nhập**: Hỗ trợ đăng ký/đăng nhập bằng **Email & Mật khẩu** hoặc đăng nhập 1 chạm với **Google OAuth 2.0 (PKCE)**.

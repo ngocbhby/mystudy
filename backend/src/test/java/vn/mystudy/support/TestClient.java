@@ -38,6 +38,19 @@ public final class TestClient {
         return send(request);
     }
 
+    public ResultActions multipart(org.springframework.test.web.servlet.request.MockMultipartHttpServletRequestBuilder request) throws Exception {
+        if (!jar.isEmpty()) request.cookie(jar.values().toArray(Cookie[]::new));
+        Cookie xsrf = jar.get("XSRF-TOKEN");
+        if (xsrf != null) request.header("X-XSRF-TOKEN", xsrf.getValue());
+        ResultActions actions = mvc.perform(request);
+        MvcResult result = actions.andReturn();
+        for (Cookie cookie : result.getResponse().getCookies()) {
+            if (cookie.getMaxAge() == 0) jar.remove(cookie.getName());
+            else jar.put(cookie.getName(), cookie);
+        }
+        return actions;
+    }
+
     /** Gửi POST không kèm header CSRF dù cookie đã có. */
     public ResultActions postWithoutCsrf(String url, String json) throws Exception {
         return send(MockMvcRequestBuilders.post(url).contentType(MediaType.APPLICATION_JSON).content(json));

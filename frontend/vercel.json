@@ -5,6 +5,14 @@
       "destination": "https://mystudy-1.onrender.com/api/:path*"
     },
     {
+      "source": "/tai-lieu/:path*",
+      "destination": "https://mystudy-1.onrender.com/tai-lieu/:path*"
+    },
+    {
+      "source": "/uploads/:path*",
+      "destination": "https://mystudy-1.onrender.com/uploads/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
