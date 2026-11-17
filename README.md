@@ -1,147 +1,191 @@
-# MyStudy
+# MyStudy — Nền tảng Ôn thi Tốt nghiệp THPT Thông minh
 
-Ứng dụng ôn thi THPT bằng tiếng Việt: đăng nhập (email hoặc Google), thiết lập mục tiêu, lộ trình học theo tuần, tổng quan nhiệm vụ hằng ngày và kho đề thi.
+**MyStudy** là ứng dụng web toàn diện hỗ trợ học sinh ôn thi tốt nghiệp THPT và xét tuyển đại học. Nền tảng kết hợp giữa lộ trình học tập cá nhân hóa hằng ngày, kho tài liệu bài mẫu chuẩn mực, hệ thống luyện thi trắc nghiệm trực tuyến có bấm giờ, và cổng quản trị (Admin Portal) cho phép giáo viên/quản trị viên đăng tải và biên soạn đề thi linh hoạt.
 
-## Techstack
+---
 
-| Tầng | Công nghệ |
+## 🌟 Các tính năng chính hiện tại của Website
+
+### 1. Xác thực & Quản lý Tài khoản (Auth & Identity)
+- **Đa phương thức đăng nhập**: Hỗ trợ đăng ký/đăng nhập bằng **Email & Mật khẩu** hoặc đăng nhập 1 chạm với **Google OAuth 2.0 (PKCE)**.
+- **Tự động liên kết tài khoản**: Tài khoản tạo bằng email có thể liên kết mượt mà với tài khoản Google nếu trùng email đã xác minh, tránh nhân đôi dữ liệu.
+- **Bảo mật phiên đăng nhập**: Lưu phiên an toàn trong cơ sở dữ liệu qua Spring Session JDBC, cơ chế chống tấn công CSRF hai lớp và chống Session Fixation.
+
+### 2. Thiết lập Mục tiêu & Lập Lộ trình Ôn thi Cá nhân hóa (Study Goal & Planner)
+- **Cá nhân hóa mục tiêu**:
+  - Chọn mục đích: *Chỉ tốt nghiệp* hoặc *Xét tuyển Đại học*.
+  - Lựa chọn 2 môn tự chọn trong tổ hợp KHTN / KHXH (Vật lí, Hóa học, Sinh học, Lịch sử, Địa lí, GDCD, Tin học, Công nghệ, Tiếng Anh) bên cạnh Toán và Ngữ văn.
+  - Thiết lập mục tiêu điểm số từng môn, thời gian ôn tập (tháng), số phút học mỗi ngày và các ngày học trong tuần.
+  - Chọn chiến lược học: *Sát đề thi* hoặc *Nền tảng → Điểm cao*.
+- **Bộ lập lịch thông minh (StudyScheduler)**: Tự động phân bổ đều các chủ đề ôn tập xuyên suốt các tuần theo thời gian biểu của học sinh.
+
+### 3. Trang Tổng quan & Nhiệm vụ Học tập Hằng ngày (Daily Overview)
+- **Lịch tuần tương tác**: Xem trực quan tiến độ học tập trong tuần (thứ 2 đến chủ nhật).
+- **Quản lý nhiệm vụ hằng ngày**:
+  - Bấm hoàn thành nhiệm vụ khi đã học xong.
+  - Hỗ trợ **Hủy hoàn thành (Undo / Uncomplete)** nếu đánh dấu nhầm, cập nhật lại trạng thái tức thì.
+- **Hộp thoại học kiến thức cốt lõi (Knowledge Dialog)**: Xem tóm tắt công thức, mẹo giải nhanh và lý thuyết trọng tâm của từng chuyên đề ngay trên giao diện mà không cần rời màn hình.
+
+### 4. Kho Bài mẫu & Phương pháp Giải (Worked Examples)
+- Tuyển tập các bài toán và dạng bài trọng tâm theo từng môn học và chuyên đề.
+- Cung cấp đề bài chi tiết, lời giải từng bước chuẩn mực và ghi chú phương pháp làm bài giúp học sinh nắm vững cách tư duy.
+
+### 5. Kho Đề thi & Luyện thi Trắc nghiệm Trực tuyến (Exams & Practice)
+- **Đề thi kèm đáp án (PDF)**: Xem và tải về các bộ đề thi thử, đề tham khảo chính thức của Bộ GD&ĐT kèm hướng dẫn chấm chi tiết.
+- **Thi thử trực tuyến tương tác (`mystudy_practice`)**:
+  - Làm bài trắc nghiệm với giao diện hiện đại, trực quan.
+  - **Đồng hồ đếm ngược** tự động nộp bài khi hết giờ.
+  - **Tự động lưu tiến độ làm bài**: Sử dụng cơ chế lưu trữ cục bộ, học sinh thoải mái tải lại trang (F5) mà không lo bị mất bài làm hay thời gian đếm ngược.
+  - Nộp bài chấm điểm tức thì, xem bảng thống kê số câu đúng/sai và lời giải chi tiết.
+
+### 6. Cổng Quản trị viên (Admin Portal — Mới ✨)
+- **Phân quyền độc quyền (Single Admin Access)**:
+  - Chỉ duy nhất tài khoản quản trị được chỉ định (`ngocbhbymit@gmail.com` hoặc qua biến môi trường `ADMIN_EMAIL`) có quyền truy cập.
+  - Toàn bộ người dùng thông thường bị ẩn nút quản trị và bị Spring Security chặn `403 Forbidden` nếu cố ý truy cập.
+- **Trang Quản trị đề thi (`/quan-tri/de-thi`)**:
+  - Thống kê tổng số đề, đề trắc nghiệm online và đề PDF.
+  - Bộ lọc đề theo môn học, hình thức đề.
+  - Xem trước và xóa đề thi (tự động xóa an toàn toàn bộ câu hỏi, đáp án và kết quả liên quan).
+- **Trang Đăng đề thi mới (`/quan-tri/de-thi/tao-moi`)**:
+  - **Tạo đề trắc nghiệm trực tuyến**: Nhập thông tin đề, thời gian làm bài, soạn câu hỏi và 4 phương án A-B-C-D linh hoạt, chọn nút radio để đánh dấu đáp án đúng.
+  - **Đăng đề thi PDF**: Hỗ trợ tải trực tiếp file PDF từ máy tính lên server (tối đa 20MB) hoặc dán liên kết file đề (Google Drive, Cloudflare CDN...).
+
+---
+
+## 🛠 Công nghệ Sử dụng (Tech Stack)
+
+| Tầng | Công nghệ / Thư viện |
 | --- | --- |
-| Frontend | React 19, TypeScript, Vite, MUI, React Router, TanStack Query, Axios, React Hook Form + Zod, Vitest |
-| Backend | Java 21, Spring Boot 4 (Web MVC, Security, OAuth2 Client, Data JPA/Hibernate, Validation, Actuator), Flyway, Spring Session JDBC |
-| Dữ liệu | PostgreSQL 16+ |
-| Triển khai | Docker nhiều giai đoạn, Render (`render.yaml`), GitHub Actions |
+| **Frontend** | React 19, TypeScript, Vite, Material UI (MUI v6/v9), React Router v7, TanStack Query v5, Axios, React Hook Form, Zod, Vitest |
+| **Backend** | Java 21, Spring Boot 4, Spring Security 6 (Method Security `@PreAuthorize`), OAuth2 Client, Spring Data JPA / Hibernate 6, Flyway Migration, Spring Session JDBC, Actuator |
+| **Cơ sở dữ liệu** | PostgreSQL 16+ (hỗ trợ Neon Serverless Postgres) |
+| **Bảo mật** | Argon2id Password Hashing, CSRF Cookie Filter, Rate Limiting (chống brute-force IP & email), Content Security Policy (CSP), Strict Reverse Proxy Forward Headers |
+| **Triển khai & CI/CD** | Render (Web Service Docker, Postgres), Vercel (Frontend SPA & API Reverse Proxy), GitHub Actions |
 
-## Cấu trúc
+---
 
-```
-backend/   Spring Boot (Maven wrapper: ./mvnw)
-frontend/  React + TypeScript (Vite)
-docs/      Thiết kế cơ sở dữ liệu
-Dockerfile, render.yaml, .github/workflows/ci.yml
-```
-
-### Backend (`backend/src/main/java/vn/mystudy`)
-
-Tổ chức theo **tính năng**, mỗi tính năng chia tầng rõ ràng:
+## 📁 Cấu trúc Thư mục Dự án
 
 ```
-<feature>/
-  controller/   Nhận HTTP, kiểm tra đầu vào, trả ApiResponse. Không chứa nghiệp vụ.
-  service/      Interface nghiệp vụ + <Name>ServiceImpl (giao dịch @Transactional).
-  repository/   Spring Data JPA.
-  entity/       Thực thể JPA ánh xạ schema Flyway.
-  dto/          Record request/response; entity không bao giờ ra ngoài API.
-  mapper/       Entity <-> DTO.
+MyStudy/
+├── backend/                         # Ứng dụng Spring Boot (Maven Wrapper)
+│   ├── src/main/java/vn/mystudy/
+│   │   ├── auth/                    # Xác thực, Profile, Session, OAuth2 Account Linking
+│   │   ├── config/                  # Cấu hình WebMvc, Database, Resources
+│   │   ├── exams/                   # Quản lý đề thi, câu hỏi, đáp án, và Cổng Quản trị (Admin)
+│   │   │   ├── controller/          # ExamController, AdminExamController
+│   │   │   ├── service/             # ExamService, AdminExamService
+│   │   │   └── entity/ & dto/       # Thực thể JPA & Record DTO
+│   │   ├── samples/                 # Kho bài mẫu (Worked Examples)
+│   │   ├── study/                   # Quản lý mục tiêu, phân bổ lịch học, nhiệm vụ hằng ngày
+│   │   └── security/                # Spring Security, AppUserDetails, RateLimiter, CSP
+│   └── src/main/resources/
+│       ├── application.yml          # Cấu hình chính (Session, Datasource, File upload, Admin email)
+│       └── db/migration/            # Flyway SQL migrations (V1 -> V10)
+│
+├── frontend/                        # Ứng dụng React 19 SPA (Vite)
+│   ├── src/
+│   │   ├── app/                     # Layout, Theme (màu tím Lavender), Router & Route Guards
+│   │   ├── features/
+│   │   │   ├── admin/               # Quản trị: AdminExamListPage, AdminNewExamPage
+│   │   │   ├── auth/                # Đăng nhập, Đăng ký, Quản lý phiên
+│   │   │   ├── exams/               # Thư viện đề thi, Giao diện làm bài trực tuyến (PracticeSheet)
+│   │   │   ├── samples/             # Xem bài mẫu và ghi chú giải
+│   │   │   └── study/               # Tổng quan nhiệm vụ, Lộ trình, Hộp thoại học kiến thức
+│   │   └── lib/http/                # Axios Client, Interceptors, CSRF handling, ApiError
+│   └── vercel.json                  # Cấu hình Proxy chuyển tiếp /api/* về Render
+│
+├── docs/                            # Tài liệu phân tích & Thiết kế cơ sở dữ liệu
+├── Dockerfile                       # Docker build đa giai đoạn (Node.js build -> Temurin JRE 21)
+└── render.yaml                      # Cấu hình Infrastructure-as-Code trên Render
 ```
 
-| Package | Vai trò |
-| --- | --- |
-| `auth` | Đăng ký, đăng nhập email, trạng thái phiên. |
-| `study` | Mục tiêu, lộ trình, nhiệm vụ; `scheduling/StudyScheduler` là logic xếp lịch thuần (dễ test). |
-| `exams` | Kho đề và đề trực tuyến. |
-| `samples` | Kho bài mẫu (đề bài, lời giải, ghi chú cách làm). |
-| `security` | Cấu hình Spring Security, CSRF, giới hạn tốc độ, OAuth2 Google, mã hóa mật khẩu. |
-| `common` | `ApiResponse`, `ErrorCode`, ngoại lệ + `GlobalExceptionHandler`, log truy cập/audit, `VietnamClock`. |
-| `config` | Thuộc tính cấu hình, kết nối CSDL, phục vụ frontend (SPA). |
+---
 
-**Khung phản hồi chung.** Mọi API (kể cả lỗi từ filter bảo mật) trả:
+## 🚀 Hướng dẫn Cài đặt & Chạy dưới Local
 
-```json
-{ "success": true,  "code": "OK", "message": "Thành công", "data": { }, "requestId": "…", "timestamp": "…" }
-{ "success": false, "code": "VALIDATION_FAILED", "message": "…", "errors": { "months": "…" }, "requestId": "…", "timestamp": "…" }
-```
+### Yêu cầu hệ thống:
+* **Java 21+**
+* **Node.js 22+** (khuyên dùng Node 22 hoặc 24 LTS)
+* PostgreSQL (hoặc dùng Database nhúng chạy thử sẵn có)
 
-`code` là `ErrorCode` ổn định để frontend xử lý; `requestId` khớp với log và header `X-Request-Id`.
-
-**Log.** `logback-spring.xml`: dev là dòng dễ đọc kèm `[requestId]`; production (`prod`) là JSON một dòng trên stdout. Logger `ACCESS` ghi mỗi yêu cầu (method, đường dẫn, status, thời gian; không ghi query/body), logger `AUDIT` ghi đăng nhập/đăng ký (email được che). Lỗi bất ngờ chỉ ghi ở `GlobalExceptionHandler`, client nhận thông điệp chung.
-
-### Frontend (`frontend/src`)
-
-```
-app/        Khởi tạo: providers (Query, Theme), router (paths.ts, guards, lazy routes), layout, theme
-config/     env.ts — đọc và kiểm tra biến môi trường (Zod); nơi duy nhất dùng import.meta.env
-lib/        Hạ tầng dùng chung: http (Axios client, ApiError, CSRF), query (QueryClient, thời gian cache), date, format
-shared/     Component và hook dùng chung không thuộc tính năng nào
-features/   auth | study | exams | samples — mỗi tính năng có api/ hooks/ components/ pages/ model/
-```
-
-- **Một cổng gọi API** (`lib/http/client.ts`): tự gỡ `ApiResponse`, chuyển mọi lỗi thành `ApiError`, tự thêm header CSRF, báo phiên hết hạn để xóa cache.
-- **Cache** bằng TanStack Query: khóa tập trung trong `features/*/api/keys.ts`, thời gian cache theo độ biến động (`staleTimes`), mutation tự invalidate dữ liệu liên quan.
-- **Route** khai báo ở `app/router/paths.ts`; trang tải theo yêu cầu (code splitting); `RequireAuth` bảo vệ trang cần đăng nhập.
-- **Stage/môi trường**: `.env.development`, `.env.staging`, `.env.production` (chỉ biến công khai `VITE_*`); `npm run dev`, `npm run build:staging`, `npm run build`.
-
-## Chạy dự án
-
-Cần Java 21+, Node 22+ (khuyến nghị 24). Backend dùng Maven wrapper nên không cần cài Maven.
-
-**1. Cơ sở dữ liệu** — dùng PostgreSQL của bạn, hoặc chạy bản nhúng (không cần cài gì):
-
+### 1. Khởi chạy Cơ sở dữ liệu
+Bạn có thể sử dụng PostgreSQL có sẵn trên máy, hoặc chạy cơ sở dữ liệu nhúng tiện lợi:
 ```bash
 cd backend && ./mvnw -q test-compile exec:java -Dexec.mainClass=vn.mystudy.support.DevDatabase -Dexec.classpathScope=test
 ```
+*(Lệnh sẽ in ra đường dẫn kết nối `DATABASE_URL=postgresql://postgres@localhost:54329/postgres`)*
 
-Lệnh in `DATABASE_URL=postgresql://postgres@localhost:54329/postgres`.
-
-**2. Cấu hình backend** — sao chép `backend/.env.example` thành `backend/.env.local` rồi điền `DATABASE_URL` (Google là tùy chọn).
-
+### 2. Cấu hình Backend
+Sao chép file mẫu và điền cấu hình:
 ```bash
 cp backend/.env.example backend/.env.local
 ```
-
-**3. Chạy** (hai terminal):
-
-```bash
-cd backend && ./mvnw spring-boot:run
+Chỉnh sửa file `backend/.env.local` với thông tin kết nối CSDL và email Admin:
+```properties
+DATABASE_URL=postgresql://postgres@localhost:54329/postgres
+ADMIN_EMAIL=ngocbhbymit@gmail.com
 ```
 
+### 3. Chạy Ứng dụng
+Mở 2 cửa sổ terminal riêng biệt:
+
+**Terminal 1 — Backend (Spring Boot 8080):**
 ```bash
-cd frontend && npm ci && npm run dev
+cd backend
+./mvnw spring-boot:run
 ```
 
-Mở `http://localhost:5173`. Vite chuyển tiếp `/api` sang Spring Boot ở `localhost:8080`, nên trình duyệt chỉ thấy một origin (cookie phiên, CSRF và OAuth hoạt động giống production). Flyway tự tạo schema khi backend khởi động.
-
-### Đăng nhập Google (tùy chọn)
-
-1. Trong [Google Cloud Console](https://console.cloud.google.com/auth/clients) tạo OAuth client loại **Web application**.
-2. Thêm `http://localhost:5173/api/auth/google/callback` vào **Authorized redirect URIs** (production: `https://<miền>/api/auth/google/callback`).
-3. Điền `GOOGLE_CLIENT_ID` và `GOOGLE_CLIENT_SECRET` vào `backend/.env.local` rồi khởi động lại backend. Thiếu hai biến này thì nút Google bị tắt, đăng nhập email vẫn hoạt động.
-
-## Kiểm thử và chất lượng
-
+**Terminal 2 — Frontend (Vite 5173):**
 ```bash
-cd backend && ./mvnw verify          # unit + tích hợp (PostgreSQL nhúng, Flyway, HTTP đầy đủ)
-cd frontend && npm run lint && npm run typecheck && npm test
+cd frontend
+npm install
+npm run dev
 ```
 
-CI (`.github/workflows/ci.yml`) chạy cả hai trên mỗi pull request.
+Truy cập trình duyệt tại: `http://localhost:5173`.
+*(Vite tự động proxy các request `/api` sang `http://localhost:8080`)*
 
-## Triển khai
+---
 
-`Dockerfile` build frontend, nhúng vào jar Spring Boot rồi chạy bằng JRE tối giản dưới người dùng không phải root. `render.yaml` mô tả web service và PostgreSQL trên Render.
+## 🧪 Kiểm thử (Testing)
 
-Biến môi trường production:
+```bash
+# Kiểm thử toàn diện Backend (36/36 tests: Scheduler, Auth, Study, Exams, Admin)
+cd backend && ./mvnw test
 
-| Biến | Ý nghĩa |
-| --- | --- |
-| `SPRING_PROFILES_ACTIVE=prod` | Bật log JSON, cookie `__Host-` + Secure, kiểm tra cấu hình khi khởi động. |
-| `APP_ORIGIN` | Địa chỉ **HTTPS** công khai. Backend từ chối khởi động nếu không phải HTTPS. |
-| `DATABASE_URL` | `postgresql://…`; máy chủ ngoài localhost tự dùng `sslmode=require`. |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Tùy chọn. |
+# Kiểm thử Frontend (Typecheck, Linter, Vitest 28/28 tests)
+cd frontend
+npm run typecheck
+npm run lint
+npm test
+```
 
-Health check: `GET /actuator/health`. Phía sau reverse proxy, backend tin `X-Forwarded-*` chỉ từ địa chỉ proxy nội bộ (`server.forward-headers-strategy=native`); nếu proxy của bạn nằm ngoài dải riêng tư mặc định, đặt `server.tomcat.remoteip.internal-proxies`.
+---
 
-### Nâng cấp từ bản Node.js
+## 🌐 Triển khai Production (Deployment)
 
-CSDL cũ dùng được nguyên trạng: Flyway nhận V1–V5 làm điểm xuất phát rồi chạy V6–V7 (xem [docs/database.md](docs/database.md)). Mật khẩu email cũ vẫn đăng nhập được và tự nâng cấp lên Argon2. Phiên đăng nhập cũ bị hủy, người dùng đăng nhập lại một lần. Callback Google giữ nguyên `/api/auth/google/callback` nên không cần đổi cấu hình Google.
+Dự án hiện được cấu hình triển khai tự động mỗi khi đẩy mã nguồn lên nhánh `main`:
 
-## Bảo mật
+### 1. Backend & CSDL (Render)
+* Chạy dưới dạng Docker Container với image `eclipse-temurin:21-jre` tối ưu dung lượng và tài nguyên RAM.
+* Cơ sở dữ liệu PostgreSQL lưu trữ bền vững.
+* **Biến môi trường cần thiết trên Render**:
+  * `SPRING_PROFILES_ACTIVE=prod`
+  * `APP_ORIGIN=https://<domain-frontend-cua-ban>`
+  * `DATABASE_URL=postgresql://...`
+  * `ADMIN_EMAIL=ngocbhbymit@gmail.com`
+  * `GOOGLE_CLIENT_ID` & `GOOGLE_CLIENT_SECRET` *(Tùy chọn cho Google OAuth)*
 
-- Mật khẩu: Argon2id (OWASP), giới hạn băm đồng thời để chống cạn RAM; scrypt cũ được nâng cấp khi đăng nhập.
-- Phiên: cookie HttpOnly, SameSite=Lax, `__Host-` + Secure ở production, đổi ID khi đăng nhập (chống session fixation), lưu ở PostgreSQL, hết hạn sau 7 ngày.
-- CSRF: token trong cookie + header `X-XSRF-TOKEN` cho mọi yêu cầu ghi.
-- Giới hạn tốc độ: theo IP (đọc đúng IP thật qua proxy tin cậy) và theo email khi đăng nhập sai; phản hồi 429 + `Retry-After`.
-- Google: Authorization Code + PKCE, `state`, `nonce`, kiểm tra ID token; chỉ lưu email đã được Google xác minh.
-- Header: CSP (script chỉ `'self'`), HSTS, `frame-ancestors 'none'`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, COOP/CORP; API luôn `Cache-Control: no-store`.
-- Mặc định từ chối: API không khai báo quyền thì bị chặn; chỉ `/api/exams` và `/api/samples` (GET), phiên và đăng nhập là công khai.
+### 2. Frontend (Vercel)
+* File `frontend/vercel.json` thiết lập rewrite toàn bộ `/api/:path*` về URL Render Backend, giúp xử lý triệt để bài toán CORS và SameSite Cookies giữa frontend và backend.
 
-**Hạn chế đã biết:** đăng ký chưa xác minh email, và thông báo "email đã tồn tại" cho phép dò email (được giảm nhẹ bằng giới hạn tốc độ). Khắc phục triệt để cần gửi email xác minh (SMTP).
+---
+
+## 🔒 Cơ chế Bảo mật Nổi bật
+
+* **Mật khẩu**: Băm bằng thuật toán **Argon2id** chuẩn khuyến nghị OWASP; tự động nâng cấp mã băm cũ khi đăng nhập.
+* **Kiểm soát phiên**: Cookie `HttpOnly`, `SameSite=Lax`, `Secure`, cơ chế đổi Session ID chống Session Fixation, phiên lưu 7 ngày trong CSDL.
+* **Bảo vệ CSRF**: Tự động cấp phát và kiểm tra token `X-XSRF-TOKEN` cho toàn bộ các phương thức ghi (`POST`, `PUT`, `DELETE`).
+* **Giới hạn tốc độ (Rate Limiting)**: Chặn tấn công dò mật khẩu và spam đăng ký theo địa chỉ IP thật và theo từng email.
+* **Content Security Policy (CSP)**: Khóa chặt thực thi script nội tuyến, chống tấn công XSS và clickjacking (`frame-ancestors 'none'`).
