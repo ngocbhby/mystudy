@@ -1,5 +1,6 @@
 package vn.mystudy.security;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -15,12 +16,18 @@ public final class AppUserDetails implements UserDetails, CredentialsContainer, 
 
     private final UUID id;
     private final String email;
+    private final String role;
     private String passwordHash;
 
     public AppUserDetails(UUID id, String email, String passwordHash) {
+        this(id, email, passwordHash, "USER");
+    }
+
+    public AppUserDetails(UUID id, String email, String passwordHash, String role) {
         this.id = id;
         this.email = email;
         this.passwordHash = passwordHash;
+        this.role = role != null ? role.toUpperCase() : "USER";
     }
 
     @Override
@@ -28,9 +35,18 @@ public final class AppUserDetails implements UserDetails, CredentialsContainer, 
         return id;
     }
 
+    public String role() {
+        return role;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+        List<GrantedAuthority> authorities = new ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
+        if ("ADMIN".equals(role)) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
+        return List.copyOf(authorities);
     }
 
     @Override

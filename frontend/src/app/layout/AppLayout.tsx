@@ -59,6 +59,17 @@ function AccountMenu() {
           >
             Quản lí mục tiêu
           </Link>
+          {user.role?.toUpperCase() === 'ADMIN' && (
+            <Link
+              component={RouterLink}
+              to={paths.adminExams}
+              underline="none"
+              onClick={() => setAnchor(null)}
+              sx={{ fontWeight: 600, color: 'primary.main' }}
+            >
+              Quản trị đề thi
+            </Link>
+          )}
           <Link
             component="button"
             type="button"
@@ -83,6 +94,14 @@ function AccountMenu() {
 
 /** Khung chung: thanh điều hướng trắng + vùng nội dung nền lavender nhạt. */
 export function AppLayout() {
+  const { data } = useSession()
+  const isAdmin = data?.user?.role?.toUpperCase() === 'ADMIN'
+
+  const navigationItems = [
+    ...nav,
+    ...(isAdmin ? [{ to: paths.adminExams, label: 'Quản trị' }] : []),
+  ]
+
   return (
     <Box sx={{ minHeight: '100svh', bgcolor: 'background.default' }}>
       <Box component="header" sx={{ bgcolor: '#fff' }}>
@@ -108,7 +127,7 @@ export function AppLayout() {
             aria-label="Điều hướng chính"
             sx={{ display: 'flex', gap: 0.5, flexGrow: 1, flexWrap: 'wrap' }}
           >
-            {nav.map(({ to, label }) => (
+            {navigationItems.map(({ to, label }) => (
               <Button
                 key={to}
                 component={NavLink}

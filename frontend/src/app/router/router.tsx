@@ -1,6 +1,6 @@
 import { createBrowserRouter, Navigate } from 'react-router'
 import { AppLayout } from '@/app/layout/AppLayout'
-import { RedirectIfAuthenticated, RequireAuth } from './guards'
+import { RedirectIfAuthenticated, RequireAdmin, RequireAuth } from './guards'
 import { paths } from './paths'
 
 /** Mỗi trang được tải theo yêu cầu (code splitting) qua `lazy`. */
@@ -52,6 +52,20 @@ export const router = createBrowserRouter([
           {
             path: paths.goal,
             lazy: async () => ({ Component: (await import('@/features/study/pages/GoalPage')).default }),
+          },
+        ],
+      },
+      // Khu vực dành riêng cho Quản trị viên (ADMIN).
+      {
+        element: <RequireAdmin />,
+        children: [
+          {
+            path: paths.adminExams,
+            lazy: async () => ({ Component: (await import('@/features/admin/pages/AdminExamListPage')).default }),
+          },
+          {
+            path: paths.adminNewExam,
+            lazy: async () => ({ Component: (await import('@/features/admin/pages/AdminNewExamPage')).default }),
           },
         ],
       },

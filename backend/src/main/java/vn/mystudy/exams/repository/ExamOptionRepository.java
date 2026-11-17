@@ -9,4 +9,6 @@ import vn.mystudy.exams.entity.OptionId;
 public interface ExamOptionRepository extends JpaRepository<ExamOption, OptionId> {
 
     List<ExamOption> findByIdVersionIdOrderByIdQuestionNumberAscIdOptionNumberAsc(UUID versionId);
+
+    void deleteByIdVersionId(UUID versionId);
 }

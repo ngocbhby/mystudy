@@ -63,7 +63,7 @@ class AuthServiceImpl implements AuthService {
                     "Không thể đăng ký bằng email này. Bạn có thể thử đăng nhập.");
         }
         AuditLog.registered(email);
-        return authenticated(new AppUserDetails(profile.getId(), email, null));
+        return authenticated(new AppUserDetails(profile.getId(), email, null, profile.getRole()));
     }
 
     @Override

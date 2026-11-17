@@ -17,6 +17,11 @@ public class ExamAnswerKey {
 
     protected ExamAnswerKey() {}
 
+    public ExamAnswerKey(QuestionId id, int correctOptionNumber) {
+        this.id = id;
+        this.correctOptionNumber = correctOptionNumber;
+    }
+
     public QuestionId getId() {
         return id;
     }

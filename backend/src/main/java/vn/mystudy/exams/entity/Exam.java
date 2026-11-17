@@ -40,6 +40,19 @@ public class Exam {
 
     protected Exam() {}
 
+    public Exam(UUID id, String subjectCode, String title, String kind, Integer examYear,
+                int durationMinutes, String sourceName, String paperUrl, String answerGuideUrl) {
+        this.id = id;
+        this.subjectCode = subjectCode;
+        this.title = title;
+        this.kind = kind;
+        this.examYear = examYear;
+        this.durationMinutes = durationMinutes;
+        this.sourceName = sourceName;
+        this.paperUrl = paperUrl;
+        this.answerGuideUrl = answerGuideUrl;
+    }
+
     public UUID getId() {
         return id;
     }

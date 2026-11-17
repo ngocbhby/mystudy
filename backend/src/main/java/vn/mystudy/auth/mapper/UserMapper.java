@@ -8,6 +8,6 @@ import vn.mystudy.auth.entity.Profile;
 public class UserMapper {
 
     public UserResponse toResponse(Profile profile) {
-        return new UserResponse(profile.getId(), profile.getEmail(), profile.getDisplayName());
+        return new UserResponse(profile.getId(), profile.getEmail(), profile.getDisplayName(), profile.getRole());
     }
 }

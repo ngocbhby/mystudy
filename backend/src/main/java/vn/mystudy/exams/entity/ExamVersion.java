@@ -25,6 +25,13 @@ public class ExamVersion {
 
     protected ExamVersion() {}
 
+    public ExamVersion(UUID id, UUID examId, int versionNumber, Instant publishedAt) {
+        this.id = id;
+        this.examId = examId;
+        this.versionNumber = versionNumber;
+        this.publishedAt = publishedAt;
+    }
+
     public UUID getId() {
         return id;
     }
@@ -35,5 +42,9 @@ public class ExamVersion {
 
     public int getVersionNumber() {
         return versionNumber;
+    }
+
+    public Instant getPublishedAt() {
+        return publishedAt;
     }
 }

@@ -1,0 +1,177 @@
+package vn.mystudy.exams.service;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.time.Instant;
+import java.time.Year;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import vn.mystudy.common.api.ErrorCode;
+import vn.mystudy.common.exception.BusinessException;
+import vn.mystudy.exams.dto.CreateExamRequest;
+import vn.mystudy.exams.dto.ExamSummaryResponse;
+import vn.mystudy.exams.entity.Exam;
+import vn.mystudy.exams.entity.ExamAnswerKey;
+import vn.mystudy.exams.entity.ExamOption;
+import vn.mystudy.exams.entity.ExamQuestion;
+import vn.mystudy.exams.entity.ExamVersion;
+import vn.mystudy.exams.entity.OptionId;
+import vn.mystudy.exams.entity.QuestionId;
+import vn.mystudy.exams.mapper.ExamMapper;
+import vn.mystudy.exams.repository.ExamAnswerKeyRepository;
+import vn.mystudy.exams.repository.ExamOptionRepository;
+import vn.mystudy.exams.repository.ExamQuestionRepository;
+import vn.mystudy.exams.repository.ExamRepository;
+import vn.mystudy.exams.repository.ExamVersionRepository;
+import vn.mystudy.study.StudyCatalog;
+
+@Service
+@Transactional
+class AdminExamServiceImpl implements AdminExamService {
+
+    private final ExamRepository exams;
+    private final ExamVersionRepository versions;
+    private final ExamQuestionRepository questions;
+    private final ExamOptionRepository options;
+    private final ExamAnswerKeyRepository answerKeys;
+    private final ExamService examService;
+    private final ExamMapper mapper;
+
+    AdminExamServiceImpl(ExamRepository exams, ExamVersionRepository versions, ExamQuestionRepository questions,
+            ExamOptionRepository options, ExamAnswerKeyRepository answerKeys, ExamService examService,
+            ExamMapper mapper) {
+        this.exams = exams;
+        this.versions = versions;
+        this.questions = questions;
+        this.options = options;
+        this.answerKeys = answerKeys;
+        this.examService = examService;
+        this.mapper = mapper;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExamSummaryResponse> listAllExams() {
+        return examService.list(null, null).exams();
+    }
+
+    @Override
+    public ExamSummaryResponse createExam(CreateExamRequest request) {
+        String subject = request.subjectCode().trim().toLowerCase();
+        if (!StudyCatalog.SUBJECTS.containsKey(subject)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã môn học không hợp lệ: " + subject);
+        }
+
+        String kind = request.kind().trim();
+        if (!"past_paper".equals(kind) && !"mystudy_practice".equals(kind)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Loại đề thi không hợp lệ: " + kind);
+        }
+
+        UUID examId = UUID.randomUUID();
+        int year = request.examYear() != null ? request.examYear() : Year.now().getValue();
+        String source = request.sourceName() != null && !request.sourceName().isBlank()
+                ? request.sourceName().trim()
+                : ("mystudy_practice".equals(kind) ? "MyStudy biên soạn" : "Bộ GD&ĐT");
+
+        if ("past_paper".equals(kind)) {
+            if (request.paperUrl() == null || request.paperUrl().isBlank()) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Đề tải về cần có đường dẫn file đề thi (PDF).");
+            }
+            String paperUrl = request.paperUrl().trim();
+            String answerUrl = request.answerGuideUrl() != null && !request.answerGuideUrl().isBlank()
+                    ? request.answerGuideUrl().trim()
+                    : paperUrl;
+
+            Exam exam = new Exam(examId, subject, request.title().trim(), kind, year,
+                    request.durationMinutes(), source, paperUrl, answerUrl);
+            exams.save(exam);
+            return mapper.toSummary(exam, 0);
+        }
+
+        // mystudy_practice:
+        List<CreateExamRequest.CreateQuestionRequest> qs = request.questions();
+        if (qs == null || qs.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Đề thi trực tuyến cần ít nhất 1 câu hỏi.");
+        }
+
+        String paperUrl = "/thi-thu/" + examId + "/de";
+        String answerUrl = "/thi-thu/" + examId + "/dap-an";
+
+        Exam exam = new Exam(examId, subject, request.title().trim(), kind, year,
+                request.durationMinutes(), source, paperUrl, answerUrl);
+        exams.save(exam);
+
+        UUID versionId = UUID.randomUUID();
+        ExamVersion version = new ExamVersion(versionId, examId, 1, Instant.now());
+        versions.save(version);
+
+        for (int i = 0; i < qs.size(); i++) {
+            int qNum = i + 1;
+            CreateExamRequest.CreateQuestionRequest q = qs.get(i);
+            if (q.prompt() == null || q.prompt().isBlank()) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Nội dung câu " + qNum + " không được để trống.");
+            }
+            questions.save(new ExamQuestion(new QuestionId(versionId, qNum), q.prompt().trim()));
+
+            List<String> opts = q.options();
+            if (opts == null || opts.size() < 2) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Câu " + qNum + " cần ít nhất 2 đáp án lựa chọn.");
+            }
+            for (int j = 0; j < opts.size(); j++) {
+                int optNum = j + 1;
+                options.save(new ExamOption(new OptionId(versionId, qNum, optNum), opts.get(j).trim()));
+            }
+
+            int correctOpt = q.correctOptionNumber() >= 1 && q.correctOptionNumber() <= opts.size()
+                    ? q.correctOptionNumber()
+                    : 1;
+            answerKeys.save(new ExamAnswerKey(new QuestionId(versionId, qNum), correctOpt));
+        }
+
+        return mapper.toSummary(exam, qs.size());
+    }
+
+    @Override
+    public void deleteExam(UUID examId) {
+        Exam exam = exams.findById(examId)
+                .orElseThrow(() -> BusinessException.notFound("Không tìm thấy đề thi cần xóa."));
+        List<ExamVersion> vList = versions.findByExamId(examId);
+        for (ExamVersion v : vList) {
+            answerKeys.deleteByIdVersionId(v.getId());
+            options.deleteByIdVersionId(v.getId());
+            questions.deleteByIdVersionId(v.getId());
+        }
+        versions.deleteAll(vList);
+        exams.delete(exam);
+    }
+
+    @Override
+    public String uploadPdf(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Vui lòng chọn file tải lên.");
+        }
+        String originalName = Objects.requireNonNullElse(file.getOriginalFilename(), "de-thi.pdf");
+        if (!originalName.toLowerCase().endsWith(".pdf")) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Hệ thống chỉ chấp nhận file định dạng .pdf.");
+        }
+        try {
+            Path uploadsDir = Path.of("uploads");
+            if (!Files.exists(uploadsDir)) {
+                Files.createDirectories(uploadsDir);
+            }
+            String cleanName = originalName.replaceAll("[^a-zA-Z0-9.-]", "_");
+            String storedName = UUID.randomUUID() + "-" + cleanName;
+            Path destination = uploadsDir.resolve(storedName);
+            Files.copy(file.getInputStream(), destination, StandardCopyOption.REPLACE_EXISTING);
+            return "/uploads/" + storedName;
+        } catch (IOException e) {
+            throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Không thể lưu file tải lên: " + e.getMessage());
+        }
+    }
+}

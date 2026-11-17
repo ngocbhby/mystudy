@@ -15,6 +15,11 @@ public class ExamQuestion {
 
     protected ExamQuestion() {}
 
+    public ExamQuestion(QuestionId id, String prompt) {
+        this.id = id;
+        this.prompt = prompt;
+    }
+
     public QuestionId getId() {
         return id;
     }

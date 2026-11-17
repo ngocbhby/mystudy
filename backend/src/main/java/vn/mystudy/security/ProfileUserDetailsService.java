@@ -25,7 +25,7 @@ class ProfileUserDetailsService implements UserDetailsService, UserDetailsPasswo
     public UserDetails loadUserByUsername(String email) {
         Profile profile = profiles.findPasswordProfile(email.toLowerCase(Locale.ROOT))
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown account"));
-        return new AppUserDetails(profile.getId(), email.toLowerCase(Locale.ROOT), profile.getPasswordHash());
+        return new AppUserDetails(profile.getId(), email.toLowerCase(Locale.ROOT), profile.getPasswordHash(), profile.getRole());
     }
 
     @Override
@@ -33,6 +33,6 @@ class ProfileUserDetailsService implements UserDetailsService, UserDetailsPasswo
     public UserDetails updatePassword(UserDetails user, String newPassword) {
         AppUserDetails principal = (AppUserDetails) user;
         profiles.findById(principal.profileId()).ifPresent(p -> p.changePasswordHash(newPassword));
-        return new AppUserDetails(principal.profileId(), principal.getUsername(), newPassword);
+        return new AppUserDetails(principal.profileId(), principal.getUsername(), newPassword, principal.role());
     }
 }

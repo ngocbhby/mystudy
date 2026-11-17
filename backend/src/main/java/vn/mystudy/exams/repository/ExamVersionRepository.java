@@ -11,5 +11,7 @@ public interface ExamVersionRepository extends JpaRepository<ExamVersion, UUID> 
 
     List<ExamVersion> findByPublishedAtLessThanEqual(Instant now);
 
+    List<ExamVersion> findByExamId(UUID examId);
+
     Optional<ExamVersion> findFirstByExamIdAndPublishedAtLessThanEqualOrderByVersionNumberDesc(UUID examId, Instant now);
 }

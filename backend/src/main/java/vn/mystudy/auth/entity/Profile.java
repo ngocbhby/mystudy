@@ -27,6 +27,9 @@ public class Profile {
     @Column(name = "password_hash")
     private String passwordHash;
 
+    @Column(name = "role")
+    private String role = "USER";
+
     protected Profile() {}
 
     public static Profile withPassword(String email, String passwordHash) {
@@ -75,5 +78,17 @@ public class Profile {
 
     public String getPasswordHash() {
         return passwordHash;
+    }
+
+    public String getRole() {
+        return role != null ? role : "USER";
+    }
+
+    public void setRole(String role) {
+        this.role = role;
+    }
+
+    public boolean isAdmin() {
+        return "ADMIN".equalsIgnoreCase(role);
     }
 }

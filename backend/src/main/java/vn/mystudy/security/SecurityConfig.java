@@ -9,6 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -30,6 +31,7 @@ import vn.mystudy.common.api.ErrorCode;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 class SecurityConfig {
 
     private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
@@ -55,6 +57,8 @@ class SecurityConfig {
 
         RequestMatcher api = PathPatternRequestMatcher.withDefaults().matcher("/api/**");
         RequestMatcher documents = PathPatternRequestMatcher.withDefaults().matcher("/tai-lieu/**");
+        RequestMatcher uploads = PathPatternRequestMatcher.withDefaults().matcher("/uploads/**");
+        RequestMatcher staticDocs = new org.springframework.security.web.util.matcher.OrRequestMatcher(documents, uploads);
 
         http
             .securityContext(c -> c.securityContextRepository(contextRepository))
@@ -69,10 +73,10 @@ class SecurityConfig {
                 .httpStrictTransportSecurity(s -> s.maxAgeInSeconds(31_536_000).includeSubDomains(true))
                 .referrerPolicy(r -> r.policy(
                         org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.NO_REFERRER))
-                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(new NegatedRequestMatcher(documents),
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(new NegatedRequestMatcher(staticDocs),
                         new StaticHeadersWriter("Content-Security-Policy", APP_CSP)))
                 // PDF hiển thị bằng trình xem của trình duyệt nên chỉ chặn bị nhúng khung.
-                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(documents,
+                .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(staticDocs,
                         new StaticHeadersWriter("Content-Security-Policy", "frame-ancestors 'none'")))
                 .addHeaderWriter(new DelegatingRequestMatcherHeaderWriter(api,
                         new StaticHeadersWriter("Cache-Control", "no-store")))
@@ -85,6 +89,7 @@ class SecurityConfig {
                 .requestMatchers("/api/session", "/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/exams", "/api/exams/**", "/api/samples").permitAll()
                 .requestMatchers("/api/study/**").authenticated()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/**").denyAll()
                 .requestMatchers(HttpMethod.GET, "/**").permitAll()
                 .requestMatchers(HttpMethod.HEAD, "/**").permitAll()

@@ -6,6 +6,10 @@ spring:
   web:
     resources:
       add-mappings: false
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 25MB
   session:
     jdbc:
       initialize-schema: never
@@ -56,8 +60,8 @@ server:
   tomcat:
     threads:
       max: 40
-    max-swallow-size: 64KB
-    max-http-form-post-size: 16KB
+    max-swallow-size: 25MB
+    max-http-form-post-size: 25MB
 
 management:
   endpoints:

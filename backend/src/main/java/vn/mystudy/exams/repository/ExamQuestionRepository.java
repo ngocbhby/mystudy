@@ -13,6 +13,8 @@ public interface ExamQuestionRepository extends JpaRepository<ExamQuestion, Ques
 
     List<ExamQuestion> findByIdVersionIdOrderByIdQuestionNumber(UUID versionId);
 
+    void deleteByIdVersionId(UUID versionId);
+
     @Query("""
             select new vn.mystudy.exams.repository.VersionQuestionCount(q.id.versionId, count(q))
             from ExamQuestion q where q.id.versionId in :versionIds group by q.id.versionId""")

@@ -9,4 +9,6 @@ import vn.mystudy.exams.entity.QuestionId;
 public interface ExamAnswerKeyRepository extends JpaRepository<ExamAnswerKey, QuestionId> {
 
     List<ExamAnswerKey> findByIdVersionId(UUID versionId);
+
+    void deleteByIdVersionId(UUID versionId);
 }

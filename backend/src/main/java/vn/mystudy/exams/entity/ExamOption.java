@@ -15,6 +15,11 @@ public class ExamOption {
 
     protected ExamOption() {}
 
+    public ExamOption(OptionId id, String content) {
+        this.id = id;
+        this.content = content;
+    }
+
     public OptionId getId() {
         return id;
     }

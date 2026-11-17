@@ -18,6 +18,9 @@ class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler("/tai-lieu/**")
                 .addResourceLocations("classpath:/static/tai-lieu/")
                 .setCacheControl(CacheControl.maxAge(Duration.ofDays(1)).cachePublic());
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:./uploads/")
+                .setCacheControl(CacheControl.maxAge(Duration.ofDays(1)).cachePublic());
         registry.addResourceHandler("/index.html", "/favicon.svg", "/robots.txt")
                 .addResourceLocations("classpath:/static/")
                 .setCacheControl(CacheControl.noCache());
