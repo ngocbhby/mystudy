@@ -68,6 +68,13 @@ class StudyController {
         return ApiResponse.ok("Đã đánh dấu đã học.", null);
     }
 
+    @PostMapping("/tasks/uncomplete")
+    ApiResponse<Void> uncompletePost(@AuthenticationPrincipal ProfilePrincipal user,
+            @Valid @RequestBody CompleteTaskRequest request) {
+        taskService.uncomplete(user.profileId(), request.id());
+        return ApiResponse.ok("Đã hủy đánh dấu đã học.", null);
+    }
+
     @DeleteMapping("/tasks/{id}")
     ApiResponse<Void> uncomplete(@AuthenticationPrincipal ProfilePrincipal user, @PathVariable UUID id) {
         taskService.uncomplete(user.profileId(), id);

@@ -54,8 +54,7 @@ export function useCompleteTask() {
     mutationFn: (id: string) => studyApi.completeTask(id),
     onSuccess: () =>
       Promise.all([
-        queryClient.invalidateQueries({ queryKey: studyKeys.overviews() }),
-        queryClient.invalidateQueries({ queryKey: studyKeys.allTasks() }),
+        queryClient.invalidateQueries({ queryKey: studyKeys.all }),
       ]),
   })
 }
@@ -66,8 +65,7 @@ export function useUncompleteTask() {
     mutationFn: (id: string) => studyApi.uncompleteTask(id),
     onSuccess: () =>
       Promise.all([
-        queryClient.invalidateQueries({ queryKey: studyKeys.overviews() }),
-        queryClient.invalidateQueries({ queryKey: studyKeys.allTasks() }),
+        queryClient.invalidateQueries({ queryKey: studyKeys.all }),
       ]),
   })
 }

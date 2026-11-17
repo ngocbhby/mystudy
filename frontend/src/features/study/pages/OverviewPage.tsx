@@ -388,31 +388,38 @@ export default function OverviewPage() {
                         {task.minutes} phút
                       </Typography>
                       {task.completed ? (
-                        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                          <Box
-                            sx={{
-                              bgcolor: colors.lavender,
-                              color: colors.successText,
-                              borderRadius: 2,
-                              px: 1.75,
-                              py: 0.75,
-                              fontWeight: 500,
-                              fontSize: 14,
-                            }}
-                          >
-                            ✓ Đã hoàn thành
-                          </Box>
-                          <Button
-                            size="small"
-                            variant="text"
-                            color="inherit"
-                            disabled={uncomplete.isPending}
-                            onClick={() => uncomplete.mutate(task.id)}
-                            sx={{ textDecoration: 'underline', color: 'text.secondary', fontSize: 13 }}
-                          >
-                            Hủy
-                          </Button>
-                        </Stack>
+                        <Box sx={{ textAlign: 'right' }}>
+                          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
+                            <Box
+                              sx={{
+                                bgcolor: colors.lavender,
+                                color: colors.successText,
+                                borderRadius: 2,
+                                px: 1.75,
+                                py: 0.75,
+                                fontWeight: 500,
+                                fontSize: 14,
+                              }}
+                            >
+                              ✓ Đã hoàn thành
+                            </Box>
+                            <Button
+                              size="small"
+                              variant="text"
+                              color="inherit"
+                              disabled={uncomplete.isPending && uncomplete.variables === task.id}
+                              onClick={() => uncomplete.mutate(task.id)}
+                              sx={{ textDecoration: 'underline', color: 'text.secondary', fontSize: 13 }}
+                            >
+                              {uncomplete.isPending && uncomplete.variables === task.id ? 'Đang hủy…' : 'Hủy'}
+                            </Button>
+                          </Stack>
+                          {uncomplete.isError && uncomplete.variables === task.id && (
+                            <Typography role="alert" color="error" variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+                              {uncomplete.error.message}
+                            </Typography>
+                          )}
+                        </Box>
                       ) : (
                         <Button
                           size="small"
