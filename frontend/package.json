@@ -8,10 +8,10 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "build:staging": "tsc --noEmit && vite build --mode staging",
+    "build": "tsc -b && vite build",
+    "build:staging": "tsc -b && vite build --mode staging",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -b",
     "lint": "eslint .",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
     "test": "vitest run",

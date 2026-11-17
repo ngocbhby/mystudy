@@ -35,6 +35,17 @@ describe('api client', () => {
     await expect(api.post('/api/auth/logout')).resolves.toBeUndefined()
   })
 
+  it('supports delete requests', async () => {
+    document.cookie = 'XSRF-TOKEN=abc'
+    http.defaults.adapter = respond(200, {
+      success: true,
+      code: 'OK',
+      message: 'Đã xóa',
+      data: null,
+    })
+    await expect(api.delete('/api/study/tasks/123')).resolves.toBeNull()
+  })
+
   it('turns error envelopes into ApiError with field errors', async () => {
     http.defaults.adapter = respond(400, {
       success: false,

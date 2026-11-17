@@ -58,4 +58,7 @@ export const api = {
   get: <T>(url: string, config?: AxiosRequestConfig) => request<T>({ ...config, method: 'GET', url }),
   post: <T>(url: string, body?: unknown, config?: AxiosRequestConfig) =>
     request<T>({ ...config, method: 'POST', url, data: body }),
+  put: <T>(url: string, body?: unknown, config?: AxiosRequestConfig) =>
+    request<T>({ ...config, method: 'PUT', url, data: body }),
+  delete: <T>(url: string, config?: AxiosRequestConfig) => request<T>({ ...config, method: 'DELETE', url }),
 }
