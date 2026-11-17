@@ -91,6 +91,7 @@ class SecurityConfig {
                 .requestMatchers("/actuator/health/**").permitAll()
                 .requestMatchers("/api/session", "/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/exams", "/api/exams/**", "/api/samples", "/api/documents/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/exams/*/attempts").permitAll()
                 .requestMatchers("/api/study/**").authenticated()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/**").denyAll()

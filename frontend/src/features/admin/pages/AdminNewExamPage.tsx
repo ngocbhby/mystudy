@@ -38,12 +38,14 @@ interface FormQuestion {
   prompt: string
   options: [string, string, string, string]
   correctOptionNumber: number
+  explanation: string
 }
 
 const emptyQuestion = (): FormQuestion => ({
   prompt: '',
   options: ['', '', '', ''],
   correctOptionNumber: 1,
+  explanation: '',
 })
 
 export default function AdminNewExamPage() {
@@ -120,6 +122,12 @@ export default function AdminNewExamPage() {
     )
   }
 
+  const updateQuestionExplanation = (index: number, val: string) => {
+    setQuestions((prev) =>
+      prev.map((q, i) => (i === index ? { ...q, explanation: val } : q))
+    )
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setFormError(null)
@@ -175,6 +183,7 @@ export default function AdminNewExamPage() {
         prompt: q.prompt.trim(),
         options: q.options.map((o) => o.trim()),
         correctOptionNumber: q.correctOptionNumber,
+        explanation: q.explanation.trim() || undefined,
       }))
 
       payload = {
@@ -520,6 +529,17 @@ export default function AdminNewExamPage() {
                         </Stack>
                       </RadioGroup>
                     </FormControl>
+
+                    <TextField
+                      fullWidth
+                      multiline
+                      rows={2}
+                      label="Cách giải / Lời giải chi tiết (tùy chọn)"
+                      placeholder="VD: Áp dụng công thức đạo hàm hàm lũy thừa: (xⁿ)′ = n·xⁿ⁻¹..."
+                      value={q.explanation}
+                      onChange={(e) => updateQuestionExplanation(qIndex, e.target.value)}
+                      sx={{ mt: 2 }}
+                    />
                   </Card>
                 ))}
               </Stack>

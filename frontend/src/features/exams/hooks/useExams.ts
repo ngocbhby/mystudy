@@ -22,3 +22,12 @@ export function useExamDetail(id: string | undefined, withAnswers: boolean) {
     enabled: Boolean(id),
   })
 }
+
+export function useLatestAttempt(id: string | undefined) {
+  return useQuery({
+    queryKey: examKeys.latestAttempt(id ?? ''),
+    queryFn: () => examApi.latestAttempt(id!),
+    enabled: Boolean(id),
+    staleTime: 0,
+  })
+}

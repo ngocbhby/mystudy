@@ -4,6 +4,7 @@ export interface CreateQuestionPayload {
   prompt: string
   options: string[]
   correctOptionNumber: number
+  explanation?: string
 }
 
 export interface CreateExamPayload {

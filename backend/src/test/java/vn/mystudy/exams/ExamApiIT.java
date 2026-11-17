@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.web.servlet.MockMvc;
 import vn.mystudy.support.IntegrationTest;
+import vn.mystudy.support.TestClient;
 
 class ExamApiIT extends IntegrationTest {
 
@@ -42,10 +43,42 @@ class ExamApiIT extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.questions.length()").value(10))
                 .andExpect(jsonPath("$.data.questions[0].options.length()").value(4))
-                .andExpect(jsonPath("$.data.questions[0].correctOption").doesNotExist());
+                .andExpect(jsonPath("$.data.questions[0].correctOption").doesNotExist())
+                .andExpect(jsonPath("$.data.questions[0].explanation").doesNotExist());
         mvc.perform(get("/api/exams/" + PRACTICE + "/answers"))
                 .andExpect(jsonPath("$.data.questions[0].correctOption").value(1))
+                .andExpect(jsonPath("$.data.questions[0].explanation").isNotEmpty())
                 .andExpect(jsonPath("$.data.questions[4].correctOption").value(3));
+    }
+
+    @Test
+    void submitAttemptGradesAndReturnsDetailedExplanations() throws Exception {
+        TestClient client = new TestClient(mvc);
+        client.get("/api/session");
+
+        String payload = """
+            {
+                "elapsedSeconds": 300,
+                "answers": {
+                    "1": 1,
+                    "2": 2
+                }
+            }
+            """;
+        client.post("/api/exams/" + PRACTICE + "/attempts", payload)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.questionCount").value(10))
+                .andExpect(jsonPath("$.data.correctCount").value(1))
+                .andExpect(jsonPath("$.data.incorrectCount").value(1))
+                .andExpect(jsonPath("$.data.blankCount").value(8))
+                .andExpect(jsonPath("$.data.score").value(1.0))
+                .andExpect(jsonPath("$.data.questions[0].correctOption").value(1))
+                .andExpect(jsonPath("$.data.questions[0].userOption").value(1))
+                .andExpect(jsonPath("$.data.questions[0].isCorrect").value(true))
+                .andExpect(jsonPath("$.data.questions[0].explanation").isNotEmpty())
+                .andExpect(jsonPath("$.data.questions[1].correctOption").value(3))
+                .andExpect(jsonPath("$.data.questions[1].userOption").value(2))
+                .andExpect(jsonPath("$.data.questions[1].isCorrect").value(false));
     }
 
     @Test

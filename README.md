@@ -33,10 +33,15 @@
 ### 5. Kho Đề thi & Luyện thi Trắc nghiệm Trực tuyến (Exams & Practice)
 - **Đề thi kèm đáp án (PDF)**: Xem và tải về các bộ đề thi thử, đề tham khảo chính thức của Bộ GD&ĐT kèm hướng dẫn chấm chi tiết.
 - **Thi thử trực tuyến tương tác (`mystudy_practice`)**:
-  - Làm bài trắc nghiệm với giao diện hiện đại, trực quan.
+  - Làm bài trắc nghiệm với giao diện hiện đại, trực quan, phân bước làm bài khoa học.
   - **Đồng hồ đếm ngược** tự động nộp bài khi hết giờ.
   - **Tự động lưu tiến độ làm bài**: Sử dụng cơ chế lưu trữ cục bộ, học sinh thoải mái tải lại trang (F5) mà không lo bị mất bài làm hay thời gian đếm ngược.
-  - Nộp bài chấm điểm tức thì, xem bảng thống kê số câu đúng/sai và lời giải chi tiết.
+  - **Lưu lịch sử bài thi & Xem lại kết quả bài trước**: Tự động lưu kết quả bài làm vào cơ sở dữ liệu (`exam_attempts`, `exam_attempt_answers`) và bộ nhớ trình duyệt; hiển thị thẻ "Kết quả bài làm gần nhất" kèm điểm số, thời gian nộp và nút "Xem lại kết quả & cách giải chi tiết" hoặc "Làm bài thi mới".
+  - **Xem chi tiết câu sai/đúng & Cách giải**:
+    - Thống kê điểm số theo thang 10, phân loại câu đúng, câu sai, câu bỏ trống và thời gian làm bài.
+    - Bộ lọc câu hỏi thông minh: *Tất cả*, *Câu sai*, *Bỏ trống*, *Câu đúng*.
+    - Đánh dấu trực quan đáp án người dùng đã chọn (xanh nếu đúng, đỏ nếu sai) song song với đáp án chính xác của đề thi.
+    - Hộp **"Cách giải chi tiết"** hướng dẫn phương pháp giải từng bước cho từng câu hỏi.
 
 ### 6. Cổng Quản trị viên (Admin Portal — Mới ✨)
 - **Phân quyền độc quyền (Single Admin Access)**:
@@ -47,8 +52,8 @@
   - Bộ lọc đề theo môn học, hình thức đề.
   - Xem trước và xóa đề thi (tự động xóa an toàn toàn bộ câu hỏi, đáp án và kết quả liên quan).
 - **Trang Đăng đề thi mới (`/quan-tri/de-thi/tao-moi`)**:
-  - **Tạo đề trắc nghiệm trực tuyến**: Nhập thông tin đề, thời gian làm bài, soạn câu hỏi và 4 phương án A-B-C-D linh hoạt, chọn nút radio để đánh dấu đáp án đúng.
-  - **Đăng đề thi PDF**: Hỗ trợ tải trực tiếp file PDF từ máy tính lên server (tối đa 20MB) hoặc dán liên kết file đề (Google Drive, Cloudflare CDN...).
+  - **Tạo đề trắc nghiệm trực tuyến**: Nhập thông tin đề, thời gian làm bài, soạn câu hỏi và 4 phương án A-B-C-D linh hoạt, chọn nút radio để đánh dấu đáp án đúng, kèm ô nhập **Cách giải / Lời giải chi tiết** cho từng câu hỏi.
+  - **Đăng đề thi PDF**: Hỗ trợ tải trực tiếp file PDF từ máy tính lên cơ sở dữ liệu PostgreSQL bytea (tối đa 20MB) hoặc dán liên kết file đề (Google Drive, Cloudflare CDN...).
 
 ---
 

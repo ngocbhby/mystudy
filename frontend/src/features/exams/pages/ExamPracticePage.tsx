@@ -85,6 +85,24 @@ export default function ExamPracticePage() {
                   )
                 })}
               </Box>
+              {showAnswers && question.explanation && (
+                <Box
+                  sx={{
+                    mt: 1.5,
+                    p: 1.5,
+                    bgcolor: 'rgba(109, 77, 214, 0.05)',
+                    borderRadius: 2,
+                    border: '1px solid rgba(109, 77, 214, 0.2)',
+                  }}
+                >
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: 'primary.main', display: 'block', mb: 0.5 }}>
+                    💡 Cách giải chi tiết:
+                  </Typography>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-line' }}>
+                    {question.explanation}
+                  </Typography>
+                </Box>
+              )}
             </Box>
           ))}
         </Stack>

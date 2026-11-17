@@ -1,4 +1,8 @@
+import CheckCircleIcon from '@mui/icons-material/CheckCircle'
+import CancelIcon from '@mui/icons-material/Cancel'
+import HelpOutlinedIcon from '@mui/icons-material/HelpOutlined'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown'
+import LightbulbOutlinedIcon from '@mui/icons-material/LightbulbOutlined'
 import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked'
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked'
 import {
@@ -6,6 +10,7 @@ import {
   Box,
   Button,
   Card,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -25,26 +30,35 @@ import { FieldBox } from '@/shared/components/FieldBox'
 import { Kicker } from '@/shared/components/PageHeader'
 import { Notice } from '@/shared/components/Notice'
 import { examApi } from '../api/exam-api'
-import { useExamList } from '../hooks/useExams'
-import { optionLabel, scoreOf } from '../model/exam-utils'
-import type { ExamQuestion, ExamSummary } from '../model/types'
+import { useExamList, useLatestAttempt } from '../hooks/useExams'
+import { optionLabel } from '../model/exam-utils'
+import type { AttemptDetail, ExamQuestion, ExamSummary } from '../model/types'
 
 type Phase = 'before' | 'taking' | 'result'
 
-interface Result {
-  correct: number
-  wrong: number[]
-  blank: number[]
-  elapsedSeconds: number
-}
-
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`
+
 const lightOutline = {
   bgcolor: '#fff',
   borderColor: colors.border,
   color: 'text.primary',
   fontWeight: 500,
 } as const
+
+function formatDateTime(isoString: string): string {
+  try {
+    const d = new Date(isoString)
+    return d.toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+  } catch {
+    return isoString
+  }
+}
 
 function Stepper({ phase }: { phase: Phase }) {
   const steps: [Phase, string][] = [
@@ -107,7 +121,7 @@ function TipsCard() {
         <li>Đồng hồ chạy khi bạn bắt đầu.</li>
         <li>Có thể chuyển câu để xem lại.</li>
         <li>Hết giờ, bài được tự động nộp.</li>
-        <li>Kết quả hiện ngay sau khi nộp.</li>
+        <li>Kết quả hiện cả đáp án đúng, sai và cách giải chi tiết.</li>
       </Box>
       <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 3 }}>
         Đề luyện minh họa, không phải đề thi chính thức.
@@ -116,7 +130,17 @@ function TipsCard() {
   )
 }
 
-function BeforeExam({ exam, onStart }: { exam: ExamSummary; onStart: () => void }) {
+function BeforeExam({
+  exam,
+  latestAttempt,
+  onStart,
+  onReviewLatest,
+}: {
+  exam: ExamSummary
+  latestAttempt: AttemptDetail | null
+  onStart: () => void
+  onReviewLatest: (attempt: AttemptDetail) => void
+}) {
   const navigate = useNavigate()
   const list = useExamList({ subject: '', year: '' })
   const online = list.data?.exams.filter((e) => e.questionCount > 0) ?? [exam]
@@ -188,9 +212,81 @@ function BeforeExam({ exam, onStart }: { exam: ExamSummary; onStart: () => void 
         <Typography variant="caption" color="text.secondary" component="p" sx={{ my: 2.5 }}>
           Trắc nghiệm 4 lựa chọn · Thang điểm 10 · Không trừ điểm câu sai
         </Typography>
-        <Button fullWidth variant="contained" size="large" onClick={onStart} sx={{ py: 1.6 }}>
-          Bắt đầu thi
-        </Button>
+
+        {latestAttempt ? (
+          <Box
+            sx={{
+              p: 2.5,
+              borderRadius: 3,
+              bgcolor: 'rgba(109, 77, 214, 0.05)',
+              border: '1px solid',
+              borderColor: 'rgba(109, 77, 214, 0.25)',
+              mb: 2,
+            }}
+          >
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 1,
+                mb: 1.5,
+              }}
+            >
+              <Typography sx={{ fontWeight: 700, color: 'primary.main', fontSize: '1.05rem' }}>
+                Kết quả bài làm gần nhất của bạn
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Nộp lúc: {formatDateTime(latestAttempt.submittedAt)}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2.5, flexWrap: 'wrap', mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
+                <Typography sx={{ fontSize: '1.9rem', fontWeight: 700, color: 'primary.main' }}>
+                  {latestAttempt.score.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}
+                </Typography>
+                <Typography color="text.secondary" sx={{ fontWeight: 500 }}>
+                  / 10 điểm
+                </Typography>
+              </Box>
+              <Typography variant="body2" sx={{ color: colors.successText, fontWeight: 600 }}>
+                ✓ Đúng {latestAttempt.correctCount} / {latestAttempt.questionCount} câu
+              </Typography>
+              <Typography variant="body2" sx={{ color: colors.danger, fontWeight: 500 }}>
+                ✗ Sai {latestAttempt.incorrectCount} câu
+              </Typography>
+              {latestAttempt.blankCount > 0 && (
+                <Typography variant="body2" sx={{ color: colors.warningText, fontWeight: 500 }}>
+                  — Bỏ trống {latestAttempt.blankCount} câu
+                </Typography>
+              )}
+              <Typography variant="body2" color="text.secondary">
+                ⏱ Thời gian: {clock(latestAttempt.elapsedSeconds)}
+              </Typography>
+            </Box>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+              <Button
+                variant="contained"
+                onClick={() => onReviewLatest(latestAttempt)}
+                sx={{ py: 1.25, fontWeight: 600 }}
+              >
+                Xem lại kết quả & cách giải chi tiết
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={onStart}
+                sx={{ ...lightOutline, py: 1.25 }}
+              >
+                Làm bài thi mới
+              </Button>
+            </Stack>
+          </Box>
+        ) : (
+          <Button fullWidth variant="contained" size="large" onClick={onStart} sx={{ py: 1.6 }}>
+            Bắt đầu thi
+          </Button>
+        )}
       </Card>
       <TipsCard />
     </Box>
@@ -366,94 +462,352 @@ function ExamRoom({
 
 function ExamResult({
   exam,
-  total,
   result,
   onRetry,
 }: {
   exam: ExamSummary
-  total: number
-  result: Result
+  result: AttemptDetail
   onRetry: () => void
 }) {
-  const score = scoreOf(result.correct, total)
+  const [filter, setFilter] = useState<'all' | 'wrong' | 'blank' | 'correct'>('all')
+  const score = result.score
   const good = score >= 5
-  const review = [
-    ...result.wrong.map((n) => `${n} (sai)`),
-    ...result.blank.map((n) => `${n} (bỏ trống)`),
-  ].sort((a, b) => parseInt(a) - parseInt(b))
+
   const stat = (label: string, value: ReactNode, color: string) => (
     <Box>
       <Typography variant="caption" color="text.secondary">
         {label}
       </Typography>
-      <Typography sx={{ color, fontWeight: 500, fontSize: '2rem', lineHeight: 1.3 }}>{value}</Typography>
+      <Typography sx={{ color, fontWeight: 600, fontSize: '2rem', lineHeight: 1.3 }}>{value}</Typography>
     </Box>
   )
 
+  const filteredQuestions = result.questions.filter((q) => {
+    if (filter === 'wrong') return q.userOption !== null && !q.isCorrect
+    if (filter === 'blank') return q.userOption === null
+    if (filter === 'correct') return q.isCorrect
+    return true
+  })
+
   return (
-    <Box
-      sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, alignItems: 'start' }}
-    >
+    <Stack spacing={3}>
+      <Box
+        sx={{ display: 'grid', gap: 3, gridTemplateColumns: { xs: '1fr', md: '2fr 1fr' }, alignItems: 'start' }}
+      >
+        <Card sx={{ p: { xs: 2.5, md: 4 } }}>
+          <Box
+            role="status"
+            sx={{
+              bgcolor: good ? colors.successBg : colors.warningBg,
+              color: good ? colors.successText : colors.warningText,
+              borderRadius: 3.5,
+              p: 2.5,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 3,
+              flexWrap: 'wrap',
+            }}
+          >
+            <Typography sx={{ fontSize: '2.6rem', fontWeight: 700, lineHeight: 1.2 }}>
+              {score.toLocaleString('vi-VN', { maximumFractionDigits: 1 })} / 10
+            </Typography>
+            <Typography sx={{ fontWeight: 600, fontSize: '1.15rem' }}>
+              {score >= 8
+                ? 'Xuất sắc! Bạn đang đi đúng hướng.'
+                : good
+                  ? 'Khá tốt! Hãy xem kỹ các câu sai để bứt phá điểm số nhé.'
+                  : 'Đừng nản lòng! Hãy đọc kỹ cách giải bên dưới và thử lại.'}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', gap: 5, flexWrap: 'wrap', my: 3 }}>
+            {stat('Đúng', result.correctCount, colors.successText)}
+            {stat('Sai', result.incorrectCount, colors.danger)}
+            {stat('Bỏ trống', result.blankCount, colors.warningText)}
+            {stat('Thời gian', clock(result.elapsedSeconds), colors.purple)}
+          </Box>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 3 }}>
+            <Button variant="contained" onClick={onRetry}>
+              Làm lại đề
+            </Button>
+            <Button component={RouterLink} to={paths.examAnswers(exam.id)} variant="outlined" sx={lightOutline}>
+              Xem đáp án gốc
+            </Button>
+          </Stack>
+        </Card>
+
+        <Card sx={{ p: 3.5 }}>
+          <Typography variant="h2" sx={{ fontWeight: 600, mb: 1.5 }}>
+            Bước tiếp theo
+          </Typography>
+          <Typography color="text.secondary" sx={{ mb: 2.5 }}>
+            Xem lại các câu sai và đọc kỹ lời giải chi tiết ở bên dưới để khắc sâu kiến thức.
+          </Typography>
+          <Stack spacing={1.25}>
+            <Button component={RouterLink} to={paths.plan} variant="soft">
+              Quay lại lộ trình
+            </Button>
+            <Button component={RouterLink} to={paths.exams} variant="outlined" sx={lightOutline}>
+              Kho đề thi
+            </Button>
+          </Stack>
+        </Card>
+      </Box>
+
+      {/* Chi tiết từng câu hỏi & Cách giải */}
       <Card sx={{ p: { xs: 2.5, md: 4 } }}>
         <Box
-          role="status"
           sx={{
-            bgcolor: good ? colors.successBg : colors.warningBg,
-            color: good ? colors.successText : colors.warningText,
-            borderRadius: 3.5,
-            p: 2.5,
             display: 'flex',
             alignItems: 'center',
-            gap: 3,
+            justifyContent: 'space-between',
             flexWrap: 'wrap',
+            gap: 2,
+            mb: 3,
+            pb: 2,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
           }}
         >
-          <Typography sx={{ fontSize: '2.6rem', fontWeight: 600, lineHeight: 1.2 }}>
-            {score.toLocaleString('vi-VN', { maximumFractionDigits: 2 })} / 10
+          <Typography variant="h2" sx={{ fontSize: '1.4rem', fontWeight: 700 }}>
+            Chi tiết bài làm & Cách giải từng câu
           </Typography>
-          <Typography sx={{ fontWeight: 600, fontSize: '1.15rem' }}>
-            {score >= 8
-              ? 'Bạn đang đi đúng hướng!'
-              : good
-                ? 'Khá tốt, còn vài chỗ cần ôn lại.'
-                : 'Hãy xem lại đáp án và thử lại nhé.'}
-          </Typography>
+
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 0.5 }}>
+            <Button
+              size="small"
+              variant={filter === 'all' ? 'contained' : 'outlined'}
+              onClick={() => setFilter('all')}
+              sx={{ borderRadius: 2 }}
+            >
+              Tất cả ({result.questionCount})
+            </Button>
+            <Button
+              size="small"
+              color="error"
+              variant={filter === 'wrong' ? 'contained' : 'outlined'}
+              onClick={() => setFilter('wrong')}
+              sx={{ borderRadius: 2 }}
+            >
+              Câu sai ({result.incorrectCount})
+            </Button>
+            {result.blankCount > 0 && (
+              <Button
+                size="small"
+                color="warning"
+                variant={filter === 'blank' ? 'contained' : 'outlined'}
+                onClick={() => setFilter('blank')}
+                sx={{ borderRadius: 2 }}
+              >
+                Bỏ trống ({result.blankCount})
+              </Button>
+            )}
+            <Button
+              size="small"
+              color="success"
+              variant={filter === 'correct' ? 'contained' : 'outlined'}
+              onClick={() => setFilter('correct')}
+              sx={{ borderRadius: 2 }}
+            >
+              Câu đúng ({result.correctCount})
+            </Button>
+          </Stack>
         </Box>
-        <Box sx={{ display: 'flex', gap: 5, flexWrap: 'wrap', my: 3 }}>
-          {stat('Đúng', result.correct, colors.successText)}
-          {stat('Sai', result.wrong.length, colors.danger)}
-          {stat('Bỏ trống', result.blank.length, colors.warningText)}
-          {stat('Thời gian', clock(result.elapsedSeconds), colors.purple)}
-        </Box>
-        {review.length > 0 && (
-          <Typography color="text.secondary">Câu cần xem lại: {review.join(', ')}.</Typography>
-        )}
-        <Stack direction="row" spacing={1.5} sx={{ mt: 3 }}>
-          <Button component={RouterLink} to={paths.examAnswers(exam.id)} variant="contained">
-            Xem đáp án
-          </Button>
-          <Button variant="outlined" onClick={onRetry} sx={lightOutline}>
-            Làm lại đề
-          </Button>
+
+        <Stack spacing={3.5}>
+          {filteredQuestions.map((q) => {
+            const isUserWrong = q.userOption !== null && !q.isCorrect
+
+            return (
+              <Box
+                key={q.number}
+                sx={{
+                  p: { xs: 2, sm: 3 },
+                  borderRadius: 3,
+                  border: '1px solid',
+                  borderColor: q.isCorrect
+                    ? 'rgba(46, 125, 50, 0.3)'
+                    : isUserWrong
+                      ? 'rgba(211, 47, 47, 0.3)'
+                      : 'divider',
+                  bgcolor: '#fff',
+                }}
+              >
+                {/* Header câu hỏi */}
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    justifyContent: 'space-between',
+                    gap: 1.5,
+                    mb: 2,
+                  }}
+                >
+                  <Typography variant="h3" component="h2" sx={{ fontSize: '1.15rem', fontWeight: 600 }}>
+                    Câu {q.number}. {q.prompt}
+                  </Typography>
+
+                  {q.isCorrect ? (
+                    <Chip
+                      icon={<CheckCircleIcon />}
+                      label="Làm đúng"
+                      color="success"
+                      size="small"
+                      sx={{ fontWeight: 600, flexShrink: 0 }}
+                    />
+                  ) : isUserWrong ? (
+                    <Chip
+                      icon={<CancelIcon />}
+                      label="Làm sai"
+                      color="error"
+                      size="small"
+                      sx={{ fontWeight: 600, flexShrink: 0 }}
+                    />
+                  ) : (
+                    <Chip
+                      icon={<HelpOutlinedIcon />}
+                      label="Chưa làm"
+                      color="warning"
+                      size="small"
+                      sx={{ fontWeight: 600, flexShrink: 0 }}
+                    />
+                  )}
+                </Box>
+
+                {/* 4 Lựa chọn A, B, C, D */}
+                <Stack spacing={1.25} sx={{ mb: 2.5 }}>
+                  {q.options.map((opt) => {
+                    const isCorrectAnswer = opt.number === q.correctOption
+                    const isUserChoice = opt.number === q.userOption
+
+                    let borderStyle = '1px solid'
+                    let borderColor: string = colors.border
+                    let bgColor = '#fff'
+                    let labelNode: ReactNode = null
+
+                    if (isCorrectAnswer) {
+                      borderStyle = '2px solid'
+                      borderColor = colors.successText
+                      bgColor = 'rgba(46, 125, 50, 0.08)'
+                      labelNode = (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: colors.successText,
+                            fontWeight: 700,
+                            bgcolor: 'rgba(46, 125, 50, 0.12)',
+                            px: 1,
+                            py: 0.3,
+                            borderRadius: 1.5,
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isUserChoice ? '✓ Bạn đã chọn (Đáp án đúng)' : '✓ Đáp án đúng'}
+                        </Typography>
+                      )
+                    } else if (isUserChoice) {
+                      borderStyle = '2px solid'
+                      borderColor = colors.danger
+                      bgColor = 'rgba(211, 47, 47, 0.08)'
+                      labelNode = (
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: colors.danger,
+                            fontWeight: 700,
+                            bgcolor: 'rgba(211, 47, 47, 0.12)',
+                            px: 1,
+                            py: 0.3,
+                            borderRadius: 1.5,
+                            flexShrink: 0,
+                          }}
+                        >
+                          ✕ Bạn đã chọn (Sai)
+                        </Typography>
+                      )
+                    }
+
+                    return (
+                      <Box
+                        key={opt.number}
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 1.5,
+                          p: 1.5,
+                          borderRadius: 2.5,
+                          border: borderStyle,
+                          borderColor,
+                          bgcolor: bgColor,
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <Typography
+                            sx={{
+                              fontWeight: 700,
+                              color: isCorrectAnswer
+                                ? colors.successText
+                                : isUserChoice
+                                  ? colors.danger
+                                  : 'text.secondary',
+                            }}
+                          >
+                            {optionLabel(opt.number)}.
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontWeight: isCorrectAnswer || isUserChoice ? 600 : 400,
+                              color: isCorrectAnswer
+                                ? colors.successText
+                                : isUserChoice
+                                  ? colors.danger
+                                  : 'text.primary',
+                            }}
+                          >
+                            {opt.text}
+                          </Typography>
+                        </Box>
+                        {labelNode}
+                      </Box>
+                    )
+                  })}
+                </Stack>
+
+                {/* Khối Cách giải chi tiết */}
+                <Box
+                  sx={{
+                    p: 2,
+                    borderRadius: 2.5,
+                    bgcolor: 'rgba(109, 77, 214, 0.05)',
+                    border: '1px solid',
+                    borderColor: 'rgba(109, 77, 214, 0.2)',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <LightbulbOutlinedIcon sx={{ color: 'primary.main', fontSize: '1.25rem' }} />
+                    <Typography sx={{ fontWeight: 700, color: 'primary.main', fontSize: '0.95rem' }}>
+                      Cách giải chi tiết:
+                    </Typography>
+                  </Box>
+                  <Typography
+                    sx={{
+                      color: 'text.primary',
+                      fontSize: '0.92rem',
+                      lineHeight: 1.6,
+                      whiteSpace: 'pre-line',
+                    }}
+                  >
+                    {q.explanation
+                      ? q.explanation
+                      : `Đáp án chính xác là ${optionLabel(q.correctOption)}. Nắm vững kiến thức lý thuyết và các công thức cơ bản để vận dụng giải bài tập này.`}
+                  </Typography>
+                </Box>
+              </Box>
+            )
+          })}
         </Stack>
       </Card>
-      <Card sx={{ p: 3.5 }}>
-        <Typography variant="h2" sx={{ fontWeight: 600, mb: 1.5 }}>
-          Bước tiếp theo
-        </Typography>
-        <Typography color="text.secondary" sx={{ mb: 2.5 }}>
-          Dành buổi học tiếp theo cho những câu còn yếu, rồi thử lại để thấy tiến bộ.
-        </Typography>
-        <Stack spacing={1.25}>
-          <Button component={RouterLink} to={paths.plan} variant="soft">
-            Quay lại lộ trình
-          </Button>
-          <Button component={RouterLink} to={paths.exams} variant="outlined" sx={lightOutline}>
-            Kho đề thi
-          </Button>
-        </Stack>
-      </Card>
-    </Box>
+    </Stack>
   )
 }
 
@@ -475,19 +829,42 @@ function loadSavedPractice(examId: string): {
   return null
 }
 
+function loadSavedLatestAttempt(examId: string): AttemptDetail | null {
+  try {
+    const raw = localStorage.getItem(`mystudy_latest_attempt_${examId}`)
+    if (!raw) return null
+    return JSON.parse(raw) as AttemptDetail
+  } catch {
+    return null
+  }
+}
+
 /** Luyện tập có bấm giờ và chấm ngay trong tab; tự động lưu nháp vào sessionStorage tránh mất bài khi tải lại trang. */
 export function PracticeSheet({ exam, questions }: { exam: ExamSummary; questions: ExamQuestion[] }) {
+  const latestQuery = useLatestAttempt(exam.id)
+  const [localAttempt, setLocalAttempt] = useState<AttemptDetail | null>(() => loadSavedLatestAttempt(exam.id))
   const [saved] = useState(() => loadSavedPractice(exam.id))
   const [phase, setPhase] = useState<Phase>(() => (saved ? 'taking' : 'before'))
   const [deadline, setDeadline] = useState(() => (saved ? saved.deadline : 0))
   const [startedAt, setStartedAt] = useState(() => (saved ? saved.startedAt : 0))
   const [now, setNow] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>(() => (saved ? saved.answers : {}))
-  const [result, setResult] = useState<Result | null>(null)
+  const [result, setResult] = useState<AttemptDetail | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [grading, setGrading] = useState(false)
   const [gradeError, setGradeError] = useState('')
   const lock = useRef(false)
+
+  // Đồng bộ kết quả mới nhất từ server vào localStorage
+  useEffect(() => {
+    if (latestQuery.data) {
+      try {
+        localStorage.setItem(`mystudy_latest_attempt_${exam.id}`, JSON.stringify(latestQuery.data))
+      } catch {
+        // ignore
+      }
+    }
+  }, [latestQuery.data, exam.id])
 
   useEffect(() => {
     if (phase === 'taking' && deadline > 0) {
@@ -517,26 +894,25 @@ export function PracticeSheet({ exam, questions }: { exam: ExamSummary; question
     setGrading(true)
     setGradeError('')
     try {
-      const { questions: key } = await examApi.answers(exam.id)
-      const wrong: number[] = []
-      const blank: number[] = []
-      let correct = 0
-      for (const q of key) {
-        const given = answers[q.number]
-        if (given === undefined) blank.push(q.number)
-        else if (given === q.correctOption) correct++
-        else wrong.push(q.number)
-      }
-      setResult({
-        correct,
-        wrong,
-        blank,
-        elapsedSeconds: Math.min(exam.durationMinutes * 60, Math.round((Date.now() - startedAt) / 1000)),
+      const elapsedSeconds = Math.min(
+        exam.durationMinutes * 60,
+        Math.max(1, Math.round((Date.now() - startedAt) / 1000)),
+      )
+      const res = await examApi.submitAttempt(exam.id, {
+        elapsedSeconds,
+        answers,
       })
+      try {
+        localStorage.setItem(`mystudy_latest_attempt_${exam.id}`, JSON.stringify(res))
+      } catch {
+        // ignore
+      }
+      setLocalAttempt(res)
+      setResult(res)
       setConfirming(false)
       setPhase('result')
     } catch {
-      setGradeError('Không thể tải đáp án. Vui lòng thử lại.')
+      setGradeError('Không thể nộp bài và chấm điểm. Vui lòng thử lại.')
     } finally {
       lock.current = false
       setGrading(false)
@@ -566,17 +942,33 @@ export function PracticeSheet({ exam, questions }: { exam: ExamSummary; question
     setPhase('taking')
   }
 
+  function handleReviewLatest(attempt: AttemptDetail) {
+    setResult(attempt)
+    setPhase('result')
+  }
+
   const headings: Record<Phase, [string, string]> = {
     before: ['01', 'Chuẩn bị vào phòng thi'],
     taking: ['02', 'Tập trung làm bài'],
     result: ['03', 'Nhìn lại để tiến bộ'],
   }
 
+  const effectiveLatest = latestQuery.data || localAttempt
+
   return (
     <Stack spacing={3}>
       <Stepper phase={phase} />
       <SectionHeading index={headings[phase][0]}>{headings[phase][1]}</SectionHeading>
-      {phase === 'before' && <BeforeExam exam={exam} onStart={start} />}
+
+      {phase === 'before' && (
+        <BeforeExam
+          exam={exam}
+          latestAttempt={effectiveLatest}
+          onStart={start}
+          onReviewLatest={handleReviewLatest}
+        />
+      )}
+
       {phase === 'taking' && (
         <ExamRoom
           questions={questions}
@@ -588,8 +980,9 @@ export function PracticeSheet({ exam, questions }: { exam: ExamSummary; question
           onSubmit={() => setConfirming(true)}
         />
       )}
+
       {phase === 'result' && result && (
-        <ExamResult exam={exam} total={questions.length} result={result} onRetry={() => setPhase('before')} />
+        <ExamResult exam={exam} result={result} onRetry={() => setPhase('before')} />
       )}
 
       <Dialog open={confirming && phase === 'taking'} onClose={() => !grading && setConfirming(false)}>

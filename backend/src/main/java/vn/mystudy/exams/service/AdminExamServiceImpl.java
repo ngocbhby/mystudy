@@ -122,7 +122,8 @@ class AdminExamServiceImpl implements AdminExamService {
             if (q.prompt() == null || q.prompt().isBlank()) {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "Nội dung câu " + qNum + " không được để trống.");
             }
-            questions.save(new ExamQuestion(new QuestionId(versionId, qNum), q.prompt().trim()));
+            String explanation = q.explanation() != null && !q.explanation().isBlank() ? q.explanation().trim() : null;
+            questions.save(new ExamQuestion(new QuestionId(versionId, qNum), q.prompt().trim(), explanation));
 
             List<String> opts = q.options();
             if (opts == null || opts.size() < 2) {

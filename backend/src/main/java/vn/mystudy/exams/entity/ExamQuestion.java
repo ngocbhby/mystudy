@@ -1,5 +1,6 @@
 package vn.mystudy.exams.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -13,11 +14,19 @@ public class ExamQuestion {
 
     private String prompt;
 
+    @Column(name = "explanation", columnDefinition = "text")
+    private String explanation;
+
     protected ExamQuestion() {}
 
     public ExamQuestion(QuestionId id, String prompt) {
+        this(id, prompt, null);
+    }
+
+    public ExamQuestion(QuestionId id, String prompt, String explanation) {
         this.id = id;
         this.prompt = prompt;
+        this.explanation = explanation;
     }
 
     public QuestionId getId() {
@@ -26,5 +35,9 @@ public class ExamQuestion {
 
     public String getPrompt() {
         return prompt;
+    }
+
+    public String getExplanation() {
+        return explanation;
     }
 }

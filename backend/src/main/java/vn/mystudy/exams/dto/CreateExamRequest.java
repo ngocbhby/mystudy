@@ -27,6 +27,7 @@ public record CreateExamRequest(
     public record CreateQuestionRequest(
             String prompt,
             List<String> options,
-            int correctOptionNumber
+            int correctOptionNumber,
+            String explanation
     ) {}
 }
