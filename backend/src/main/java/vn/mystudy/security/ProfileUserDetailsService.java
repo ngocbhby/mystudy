@@ -1,6 +1,7 @@
 package vn.mystudy.security;
 
 import java.util.Locale;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -15,17 +16,29 @@ import vn.mystudy.auth.repository.ProfileRepository;
 class ProfileUserDetailsService implements UserDetailsService, UserDetailsPasswordService {
 
     private final ProfileRepository profiles;
+    private final String adminEmail;
 
-    ProfileUserDetailsService(ProfileRepository profiles) {
+    ProfileUserDetailsService(ProfileRepository profiles,
+            @Value("${app.admin-email:ngocbhbymit@gmail.com}") String adminEmail) {
         this.profiles = profiles;
+        this.adminEmail = adminEmail != null ? adminEmail.trim().toLowerCase(Locale.ROOT) : "";
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public UserDetails loadUserByUsername(String email) {
-        Profile profile = profiles.findPasswordProfile(email.toLowerCase(Locale.ROOT))
+        String normalizedEmail = email.toLowerCase(Locale.ROOT);
+        Profile profile = profiles.findPasswordProfile(normalizedEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown account"));
-        return new AppUserDetails(profile.getId(), email.toLowerCase(Locale.ROOT), profile.getPasswordHash(), profile.getRole());
+
+        boolean isAdmin = !adminEmail.isBlank() && normalizedEmail.equals(adminEmail);
+        String expectedRole = isAdmin ? "ADMIN" : "USER";
+        if (!expectedRole.equalsIgnoreCase(profile.getRole())) {
+            profile.setRole(expectedRole);
+            profiles.saveAndFlush(profile);
+        }
+
+        return new AppUserDetails(profile.getId(), normalizedEmail, profile.getPasswordHash(), expectedRole);
     }
 
     @Override

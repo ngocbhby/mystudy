@@ -3,6 +3,7 @@ package vn.mystudy.auth.service;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -37,26 +38,32 @@ class AuthServiceImpl implements AuthService {
     private final HashingGuard hashingGuard;
     private final UserMapper mapper;
     private final RateLimiter failedLogins;
+    private final String adminEmail;
 
     AuthServiceImpl(ProfileRepository profiles, PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager, HashingGuard hashingGuard, UserMapper mapper,
-            RateLimiter failedLoginLimiter) {
+            RateLimiter failedLoginLimiter,
+            @Value("${app.admin-email:ngocbhbymit@gmail.com}") String adminEmail) {
         this.profiles = profiles;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;
         this.hashingGuard = hashingGuard;
         this.mapper = mapper;
         this.failedLogins = failedLoginLimiter;
+        this.adminEmail = adminEmail != null ? adminEmail.trim().toLowerCase(Locale.ROOT) : "";
     }
 
     @Override
     public Authentication register(RegisterRequest request) {
         String email = normalize(request.email());
         String hash = hashingGuard.run(() -> passwordEncoder.encode(request.password()));
+        Profile newProfile = Profile.withPassword(email, hash);
+        boolean isAdmin = !adminEmail.isBlank() && email != null && email.equals(adminEmail);
+        newProfile.setRole(isAdmin ? "ADMIN" : "USER");
         Profile profile;
         try {
             // Không bọc trong giao dịch ngoài: vi phạm ràng buộc duy nhất chỉ làm hỏng giao dịch của repository.
-            profile = profiles.saveAndFlush(Profile.withPassword(email, hash));
+            profile = profiles.saveAndFlush(newProfile);
         } catch (DataIntegrityViolationException e) {
             AuditLog.registerRejected(email);
             throw new BusinessException(ErrorCode.CONFLICT,
@@ -106,9 +113,20 @@ class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Optional<UserResponse> currentUser(Authentication authentication) {
-        return ProfilePrincipal.idOf(authentication).flatMap(profiles::findById).map(mapper::toResponse);
+        return ProfilePrincipal.idOf(authentication).flatMap(profiles::findById).map(profile -> {
+            if (profile.getEmail() != null) {
+                String norm = profile.getEmail().trim().toLowerCase(Locale.ROOT);
+                boolean isAdmin = !adminEmail.isBlank() && norm.equals(adminEmail);
+                String expected = isAdmin ? "ADMIN" : "USER";
+                if (!expected.equalsIgnoreCase(profile.getRole())) {
+                    profile.setRole(expected);
+                    profiles.saveAndFlush(profile);
+                }
+            }
+            return mapper.toResponse(profile);
+        });
     }
 
     private static Authentication authenticated(AppUserDetails principal) {

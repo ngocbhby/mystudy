@@ -20,22 +20,14 @@ class AdminExamApiIT extends IntegrationTest {
     private TestClient adminClient() throws Exception {
         TestClient client = new TestClient(mvc);
         client.get("/api/session");
-        String email = "admin-" + UUID.randomUUID() + "@example.com";
+        String email = "ngocbhbymit@gmail.com";
         String password = "admin-password-123";
-        var res = client.post("/api/auth/register",
-                "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}")
-                .andExpect(status().isCreated())
-                .andReturn();
-        String idStr = JsonPath.read(res.getResponse().getContentAsString(), "$.data.id");
-        UUID id = UUID.fromString(idStr);
-
-        // Nâng cấp tài khoản thành ADMIN
-        profiles.findById(id).ifPresent(p -> {
-            p.setRole("ADMIN");
-            profiles.saveAndFlush(p);
-        });
-
-        // Đăng nhập lại để cập nhật Authentication chứa ROLE_ADMIN trong session
+        // Nếu tài khoản đã tồn tại thì đăng nhập, nếu chưa thì đăng ký
+        if (profiles.findFirstByEmailIgnoreCase(email).isEmpty()) {
+            client.post("/api/auth/register",
+                    "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}")
+                    .andExpect(status().isCreated());
+        }
         client.post("/api/auth/login",
                 "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}")
                 .andExpect(status().isOk());
