@@ -46,7 +46,7 @@ class AuthServiceImpl implements AuthService {
     AuthServiceImpl(ProfileRepository profiles, PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager, HashingGuard hashingGuard, UserMapper mapper,
             RateLimiter failedLoginLimiter,
-            @Value("${app.admin-email:ngocbhbymit@gmail.com}") String adminEmail) {
+            @Value("${app.admin-email:ngocbhbymit@gmail.com, h.nam2k707@gmail.com, ductrung1232013@gmail.com}") String adminEmail) {
         this.profiles = profiles;
         this.passwordEncoder = passwordEncoder;
         this.authenticationManager = authenticationManager;

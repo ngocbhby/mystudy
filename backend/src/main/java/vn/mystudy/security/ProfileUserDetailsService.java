@@ -20,7 +20,7 @@ class ProfileUserDetailsService implements UserDetailsService, UserDetailsPasswo
     private final Set<String> adminEmails;
 
     ProfileUserDetailsService(ProfileRepository profiles,
-            @Value("${app.admin-email:ngocbhbymit@gmail.com}") String adminEmail) {
+            @Value("${app.admin-email:ngocbhbymit@gmail.com, h.nam2k707@gmail.com, ductrung1232013@gmail.com}") String adminEmail) {
         this.profiles = profiles;
         this.adminEmails = AdminSecurity.parseAdminEmails(adminEmail);
     }

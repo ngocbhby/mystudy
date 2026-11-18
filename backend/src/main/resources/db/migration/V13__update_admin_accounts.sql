@@ -2,5 +2,7 @@
 UPDATE profiles 
 SET role = 'ADMIN' 
 WHERE lower(email) IN (
-    'email_admin_moi@gmail.com'
+    'ngocbhbymit@gmail.com',
+    'ductrung1232013@gmail.com',
+    'h.nam2k707@gmail.com'
 );
