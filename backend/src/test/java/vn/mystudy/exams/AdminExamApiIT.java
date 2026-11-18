@@ -17,22 +17,52 @@ class AdminExamApiIT extends IntegrationTest {
     @Autowired MockMvc mvc;
     @Autowired ProfileRepository profiles;
 
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
+
+    /** Quản trị viên thật chỉ được cấp qua Google; trong test, cấp quyền trực tiếp trong CSDL rồi đăng nhập. */
     private TestClient adminClient() throws Exception {
         TestClient client = new TestClient(mvc);
         client.get("/api/session");
-        String email = "ngocbhbymit@gmail.com";
+        String email = "admin-" + UUID.randomUUID() + "@example.com";
         String password = "admin-password-123";
-        // Nếu tài khoản đã tồn tại thì đăng nhập, nếu chưa thì đăng ký
-        if (profiles.findFirstByEmailIgnoreCase(email).isEmpty()) {
-            client.post("/api/auth/register",
-                    "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}")
-                    .andExpect(status().isCreated());
-        }
+        client.post("/api/auth/register",
+                "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}")
+                .andExpect(status().isCreated());
+        jdbc.update("UPDATE profiles SET role = 'ADMIN' WHERE lower(email) = ?", email);
         client.post("/api/auth/login",
                 "{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}")
                 .andExpect(status().isOk());
-
         return client;
+    }
+
+    @Test
+    void registeringWithTheAdminEmailDoesNotGrantAdmin() throws Exception {
+        TestClient client = new TestClient(mvc);
+        client.get("/api/session");
+        // app.admin-email = admin@mystudy.test trong cấu hình test; email đăng ký chưa xác minh nên không được quyền.
+        String email = profiles.findPasswordProfile("admin@mystudy.test").isPresent()
+                ? "Admin@MyStudy.test" : "admin@mystudy.test";
+        var register = client.post("/api/auth/register",
+                "{\"email\":\"" + email + "\",\"password\":\"user-password-123\"}");
+        if (register.andReturn().getResponse().getStatus() == 201) {
+            register.andExpect(jsonPath("$.data.role").value("USER"));
+        } else {
+            client.post("/api/auth/login", "{\"email\":\"" + email + "\",\"password\":\"user-password-123\"}")
+                    .andExpect(status().isOk());
+        }
+        client.get("/api/admin/exams").andExpect(status().isForbidden());
+        client.get("/api/session").andExpect(jsonPath("$.data.user.role").value("USER"));
+    }
+
+    @Test
+    void uploadRejectsFilesThatAreNotRealPdfs() throws Exception {
+        TestClient client = adminClient();
+        org.springframework.mock.web.MockMultipartFile html = new org.springframework.mock.web.MockMultipartFile(
+                "file", "de-thi.pdf", "text/html",
+                "<html><script>alert(1)</script></html>".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        client.multipart(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .multipart("/api/admin/exams/upload-pdf").file(html))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

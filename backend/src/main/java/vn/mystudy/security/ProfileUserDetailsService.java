@@ -1,7 +1,6 @@
 package vn.mystudy.security;
 
 import java.util.Locale;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -16,12 +15,9 @@ import vn.mystudy.auth.repository.ProfileRepository;
 class ProfileUserDetailsService implements UserDetailsService, UserDetailsPasswordService {
 
     private final ProfileRepository profiles;
-    private final String adminEmail;
 
-    ProfileUserDetailsService(ProfileRepository profiles,
-            @Value("${app.admin-email:ngocbhbymit@gmail.com}") String adminEmail) {
+    ProfileUserDetailsService(ProfileRepository profiles) {
         this.profiles = profiles;
-        this.adminEmail = adminEmail != null ? adminEmail.trim().toLowerCase(Locale.ROOT) : "";
     }
 
     @Override
@@ -31,14 +27,8 @@ class ProfileUserDetailsService implements UserDetailsService, UserDetailsPasswo
         Profile profile = profiles.findPasswordProfile(normalizedEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown account"));
 
-        boolean isAdmin = !adminEmail.isBlank() && normalizedEmail.equals(adminEmail);
-        String expectedRole = isAdmin ? "ADMIN" : "USER";
-        if (!expectedRole.equalsIgnoreCase(profile.getRole())) {
-            profile.setRole(expectedRole);
-            profiles.saveAndFlush(profile);
-        }
-
-        return new AppUserDetails(profile.getId(), normalizedEmail, profile.getPasswordHash(), expectedRole);
+        // Quyền lấy từ CSDL, không suy ra từ email (email đăng ký bằng mật khẩu chưa được xác minh).
+        return new AppUserDetails(profile.getId(), normalizedEmail, profile.getPasswordHash(), profile.getRole());
     }
 
     @Override

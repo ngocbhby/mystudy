@@ -85,4 +85,69 @@ class StudySchedulerTest {
                 LocalDate.of(2026, 11, 16), "exam_focused"))
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("Missing topics");
     }
+
+    @Test
+    void subjectsFurtherFromTheirTargetGetMoreTime() {
+        LocalDate monday = LocalDate.of(2026, 11, 16);
+        Goal goal = new Goal("university_admission", List.of("physics", "english"),
+                Map.of("math", 9.0, "literature", 7.0, "physics", 7.0, "english", 7.0),
+                Map.of("math", 5.0, "literature", 6.0, "physics", 6.0, "english", 6.0), 1, 90, Set.of(1, 2, 3, 4, 5),
+                Map.of());
+        Map<String, Integer> minutes = minutesBySubject(scheduler.schedule(goal, topics, List.of(), monday, "exam_focused"));
+
+        // Toán thiếu 4 điểm, các môn khác thiếu 1 điểm: Toán được khoảng gấp 4 lần thời gian.
+        assertThat(minutes.get("math")).isGreaterThan(3 * minutes.get("literature"));
+        assertThat(minutes.get("literature")).isPositive();
+    }
+
+    @Test
+    void graduationPurposePrioritisesSubjectsBelowFive() {
+        LocalDate monday = LocalDate.of(2026, 11, 16);
+        Map<String, Double> targets = Map.of("math", 6.0, "literature", 6.0, "physics", 6.0, "english", 6.0);
+        Map<String, Double> current = Map.of("math", 4.0, "literature", 4.5, "physics", 5.0, "english", 5.0);
+        Goal graduation = new Goal("graduation", List.of("physics", "english"), targets, current, 1, 90,
+                Set.of(1, 2, 3, 4, 5), Map.of());
+        Goal admission = new Goal("university_admission", List.of("physics", "english"), targets, current, 1, 90,
+                Set.of(1, 2, 3, 4, 5), Map.of());
+
+        int literatureForGraduation = minutesBySubject(
+                scheduler.schedule(graduation, topics, List.of(), monday, "exam_focused")).get("literature");
+        int literatureForAdmission = minutesBySubject(
+                scheduler.schedule(admission, topics, List.of(), monday, "exam_focused")).get("literature");
+        assertThat(literatureForGraduation).isGreaterThan(literatureForAdmission);
+    }
+
+    @Test
+    void weakTopicsAppearMoreOftenInTheRotation() {
+        List<TopicRef> math = topics.stream().filter(t -> t.subjectCode().equals("math")).toList();
+        UUID weak = math.get(1).id();
+        List<TopicRef> rotation = StudyScheduler.rotation(math, Map.of(weak, 3), false);
+
+        assertThat(rotation).hasSize(6);
+        assertThat(rotation.stream().filter(t -> t.id().equals(weak)).count()).isEqualTo(3);
+        // Rải đều: không xếp chuyên đề yếu liền nhau ba lần.
+        for (int i = 0; i + 2 < rotation.size(); i++) {
+            assertThat(rotation.get(i).id().equals(weak) && rotation.get(i + 1).id().equals(weak)
+                    && rotation.get(i + 2).id().equals(weak)).isFalse();
+        }
+    }
+
+    @Test
+    void neverExceedsTheDailyBudget() {
+        LocalDate monday = LocalDate.of(2026, 11, 16);
+        Goal goal = new Goal("graduation", List.of("physics", "english"),
+                Map.of("math", 9.0, "literature", 7.0, "physics", 7.0, "english", 7.0),
+                Map.of("math", 2.0), 2, 75, Set.of(1, 3, 5), Map.of(topics.get(0).id(), 4));
+        List<ScheduledTask> tasks = scheduler.schedule(goal, topics, List.of(), monday, "foundation_first");
+        Map<LocalDate, Integer> perDay = new java.util.HashMap<>();
+        tasks.forEach(t -> perDay.merge(t.date(), t.minutes(), Integer::sum));
+        assertThat(perDay.values()).allMatch(m -> m == 75);
+        assertThat(tasks).allMatch(t -> t.minutes() <= 45);
+    }
+
+    private static Map<String, Integer> minutesBySubject(List<ScheduledTask> tasks) {
+        Map<String, Integer> result = new java.util.HashMap<>();
+        tasks.forEach(t -> result.merge(t.subjectCode(), t.minutes(), Integer::sum));
+        return result;
+    }
 }

@@ -22,7 +22,7 @@ public class ProfileOidcUserService extends OidcUserService {
     private final String adminEmail;
 
     ProfileOidcUserService(AuthService authService, ProfileRepository profiles,
-            @Value("${app.admin-email:ngocbhbymit@gmail.com}") String adminEmail) {
+            @Value("${app.admin-email:}") String adminEmail) {
         this.authService = authService;
         this.profiles = profiles;
         this.adminEmail = adminEmail != null ? adminEmail.trim().toLowerCase(Locale.ROOT) : "";

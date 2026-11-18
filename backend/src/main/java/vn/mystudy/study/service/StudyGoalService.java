@@ -10,4 +10,7 @@ public interface StudyGoalService {
 
     /** Lưu mục tiêu mới, thay lộ trình hiện hành và xếp lại lịch (giữ nhiệm vụ đã hoàn thành). */
     StudyGoalResponse save(UUID profileId, GoalRequest request);
+
+    /** Tạo lại lộ trình từ hôm nay với mục tiêu hiện tại, áp dụng trọng số chuyên đề mới từ kết quả thi gần đây. */
+    StudyGoalResponse rebuild(UUID profileId);
 }

@@ -123,17 +123,19 @@ class AuthFlowIT extends IntegrationTest {
     }
 
     @Test
-    void linkingGoogleToExistingEmailPreservesProfile() throws Exception {
-        TestClient client = new TestClient(mvc);
+    void googleSignInDoesNotTakeOverAnUnverifiedPasswordAccount() throws Exception {
+        // Kẻ xấu đăng ký trước bằng email của người khác (email không được xác minh).
+        TestClient attacker = new TestClient(mvc);
         String email = email();
-        client.get("/api/session");
-        client.post("/api/auth/register", credentials(email, "a-long-password-123")).andExpect(status().isCreated());
+        attacker.get("/api/session");
+        attacker.post("/api/auth/register", credentials(email, "a-long-password-123")).andExpect(status().isCreated());
+        UUID attackerProfile = jdbc.queryForObject("select id from profiles where email = ?", UUID.class, email);
 
-        UUID existingId = jdbc.queryForObject("select id from profiles where email = ?", UUID.class, email);
-        UUID linkedId = authService.linkGoogleAccount("google-sub-" + UUID.randomUUID(), email, "Học sinh");
+        // Chủ thật của email đăng nhập Google: phải nhận hồ sơ riêng, không dùng chung hồ sơ của kẻ xấu.
+        UUID googleProfile = authService.linkGoogleAccount("google-sub-" + UUID.randomUUID(), email, "Học sinh");
 
-        assertThat(linkedId).isEqualTo(existingId);
-        Integer count = jdbc.queryForObject("select count(*) from profiles where email = ?", Integer.class, email);
-        assertThat(count).isEqualTo(1);
+        assertThat(googleProfile).isNotEqualTo(attackerProfile);
+        String sub = jdbc.queryForObject("select google_sub from profiles where id = ?", String.class, attackerProfile);
+        assertThat(sub).isNull();
     }
 }

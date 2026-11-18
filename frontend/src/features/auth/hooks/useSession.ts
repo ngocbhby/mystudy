@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { clearPracticeStorage } from '@/features/exams/model/practice-storage'
 import { staleTimes } from '@/lib/query/query-client'
 import { authApi } from '../api/auth-api'
 import { authKeys } from '../api/keys'
@@ -13,6 +14,8 @@ function useEstablishSession(mutationFn: (credentials: Credentials) => ReturnTyp
   return useMutation({
     mutationFn,
     onSuccess: (user) => {
+      // Người mới đăng nhập không được thấy bài làm/kết quả lưu của người dùng trước trên cùng trình duyệt.
+      clearPracticeStorage()
       queryClient.setQueryData<Session>(authKeys.session, (old) => ({
         googleEnabled: old?.googleEnabled ?? false,
         user,
@@ -28,6 +31,7 @@ export const useRegister = () => useEstablishSession(authApi.register)
 export function useResetSession() {
   const queryClient = useQueryClient()
   return () => {
+    clearPracticeStorage()
     queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== 'auth' })
     queryClient.setQueryData<Session>(authKeys.session, (old) => ({
       googleEnabled: old?.googleEnabled ?? false,

@@ -2,7 +2,6 @@ package vn.mystudy.exams.dto;
 
 import java.util.Map;
 
-public record SubmitAttemptRequest(
-        int elapsedSeconds,
-        Map<Integer, Integer> answers
-) {}
+/** Đáp án theo số câu → số thứ tự lựa chọn. Thời gian làm bài do máy chủ tự tính, không nhận từ trình duyệt. */
+public record SubmitAttemptRequest(Map<Integer, Integer> answers) {
+}

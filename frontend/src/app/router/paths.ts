@@ -5,6 +5,7 @@ export const paths = {
   overview: '/tong-quan',
   plan: '/lo-trinh',
   goal: '/thiet-lap-muc-tieu',
+  analysis: '/phan-tich',
   exams: '/kho-de-thi',
   samples: '/kho-bai-mau',
   practice: '/thi-thu',

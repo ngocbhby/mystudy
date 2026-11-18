@@ -6,6 +6,8 @@ export interface Goal {
   purpose: PurposeCode
   electiveCodes: SubjectCode[]
   scores: Partial<Record<SubjectCode, number>>
+  /** Điểm hiện tại tự đánh giá (tùy chọn): lộ trình dành nhiều thời gian hơn cho môn còn cách xa mục tiêu. */
+  currentScores?: Partial<Record<SubjectCode, number>>
   months: number
   dailyMinutes: number
   days: number[]
@@ -30,6 +32,7 @@ export interface StudyGoalData {
 export interface Task {
   id: string
   subjectCode: SubjectCode
+  topicId?: string
   topic: string
   date: string
   minutes: number

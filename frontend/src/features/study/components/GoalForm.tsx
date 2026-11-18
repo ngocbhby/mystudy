@@ -99,6 +99,8 @@ export function GoalForm({ savedGoal, onSaved }: Props) {
 
   const scoreError = (code: string) =>
     (errors.scores as Record<string, { message?: string }> | undefined)?.[code]?.message
+  const currentScoreError = (code: string) =>
+    (errors.currentScores as Record<string, { message?: string }> | undefined)?.[code]?.message
   const electivesError = errors.electiveCodes?.message ?? errors.electiveCodes?.root?.message
   const saving = save.isPending
   const hasFieldErrors = Object.keys(errors).length > 0
@@ -216,6 +218,24 @@ export function GoalForm({ savedGoal, onSaved }: Props) {
                   error={scoreError(code)}
                   inputProps={{ inputMode: 'decimal', maxLength: 8 }}
                   {...bind(`scores.${code}`)}
+                />
+              ))}
+            </Box>
+            <Typography sx={{ fontWeight: 600, mt: 3, mb: 0.5 }}>Điểm hiện tại của bạn (không bắt buộc)</Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+              Nhập điểm bài kiểm tra gần nhất. Môn càng cách xa mục tiêu càng được xếp nhiều thời gian hơn; với mục tiêu
+              chỉ cần tốt nghiệp, môn dưới 5 điểm được ưu tiên thêm.
+            </Typography>
+            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' } }}>
+              {codes.map((code) => (
+                <FieldBox
+                  key={`current-${code}`}
+                  id={`goal-current-${code}`}
+                  label={`${subjectName(code)} hiện tại`}
+                  unit="điểm"
+                  error={currentScoreError(code)}
+                  inputProps={{ inputMode: 'decimal', maxLength: 8 }}
+                  {...bind(`currentScores.${code}`)}
                 />
               ))}
             </Box>

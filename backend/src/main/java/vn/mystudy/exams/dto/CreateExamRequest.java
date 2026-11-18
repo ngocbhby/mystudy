@@ -28,6 +28,7 @@ public record CreateExamRequest(
             String prompt,
             List<String> options,
             int correctOptionNumber,
-            String explanation
+            String explanation,
+            java.util.UUID topicId
     ) {}
 }

@@ -39,6 +39,7 @@ export interface QuestionReview {
   userOption: number | null
   isCorrect: boolean
   explanation?: string
+  topicId?: string | null
 }
 
 export interface AttemptDetail {
@@ -55,9 +56,18 @@ export interface AttemptDetail {
   questions: QuestionReview[]
 }
 
+/** Thời gian làm bài do máy chủ tính, trình duyệt chỉ gửi đáp án. */
 export interface SubmitAttemptPayload {
-  elapsedSeconds: number
   answers: Record<number, number>
+}
+
+export interface StartedAttempt {
+  attemptId: string
+  startedAt: string
+  expiresAt: string
+  serverTime: string
+  /** Chỉ có với khách: gửi lại khi nộp bài và xem kết quả. */
+  attemptToken: string | null
 }
 
 export interface ExamDetail {
