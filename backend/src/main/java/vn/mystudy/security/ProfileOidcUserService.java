@@ -1,6 +1,7 @@
 package vn.mystudy.security;
 
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
@@ -19,13 +20,13 @@ public class ProfileOidcUserService extends OidcUserService {
 
     private final AuthService authService;
     private final ProfileRepository profiles;
-    private final String adminEmail;
+    private final Set<String> adminEmails;
 
     ProfileOidcUserService(AuthService authService, ProfileRepository profiles,
             @Value("${app.admin-email:ngocbhbymit@gmail.com}") String adminEmail) {
         this.authService = authService;
         this.profiles = profiles;
-        this.adminEmail = adminEmail != null ? adminEmail.trim().toLowerCase(Locale.ROOT) : "";
+        this.adminEmails = AdminSecurity.parseAdminEmails(adminEmail);
     }
 
     @Override
@@ -39,7 +40,7 @@ public class ProfileOidcUserService extends OidcUserService {
         UUID profileId = authService.linkGoogleAccount(subject, email, google.getFullName());
 
         String normalizedEmail = email != null ? email.trim().toLowerCase(Locale.ROOT) : "";
-        boolean isAdmin = !adminEmail.isBlank() && normalizedEmail.equals(adminEmail);
+        boolean isAdmin = AdminSecurity.isAdmin(normalizedEmail, adminEmails);
         String expectedRole = isAdmin ? "ADMIN" : "USER";
 
         Profile profile = profiles.findById(profileId).orElse(null);
