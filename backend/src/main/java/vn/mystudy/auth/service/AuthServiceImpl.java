@@ -3,6 +3,7 @@ package vn.mystudy.auth.service;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -40,7 +41,7 @@ class AuthServiceImpl implements AuthService {
     private final HashingGuard hashingGuard;
     private final UserMapper mapper;
     private final RateLimiter failedLogins;
-    private final String adminEmail;
+    private final Set<String> adminEmails;
 
     AuthServiceImpl(ProfileRepository profiles, PasswordEncoder passwordEncoder,
             AuthenticationManager authenticationManager, HashingGuard hashingGuard, UserMapper mapper,
@@ -52,7 +53,7 @@ class AuthServiceImpl implements AuthService {
         this.hashingGuard = hashingGuard;
         this.mapper = mapper;
         this.failedLogins = failedLoginLimiter;
-        this.adminEmail = adminEmail != null ? adminEmail.trim().toLowerCase(Locale.ROOT) : "";
+        this.adminEmails = vn.mystudy.security.AdminSecurity.parseAdminEmails(adminEmail);
     }
 
     @Override
@@ -65,7 +66,7 @@ class AuthServiceImpl implements AuthService {
         String email = normalize(request.email());
         String hash = hashingGuard.run(() -> passwordEncoder.encode(request.password()));
         Profile newProfile = Profile.withPassword(email, hash);
-        boolean isAdmin = !adminEmail.isBlank() && email != null && email.equals(adminEmail);
+        boolean isAdmin = vn.mystudy.security.AdminSecurity.isAdmin(email, adminEmails);
         newProfile.setRole(isAdmin ? "ADMIN" : "USER");
         Profile profile;
         try {
@@ -144,7 +145,7 @@ class AuthServiceImpl implements AuthService {
         return ProfilePrincipal.idOf(authentication).flatMap(profiles::findById).map(profile -> {
             if (profile.getEmail() != null) {
                 String norm = profile.getEmail().trim().toLowerCase(Locale.ROOT);
-                boolean isAdmin = !adminEmail.isBlank() && norm.equals(adminEmail);
+                boolean isAdmin = vn.mystudy.security.AdminSecurity.isAdmin(norm, adminEmails);
                 String expected = isAdmin ? "ADMIN" : "USER";
                 if (!expected.equalsIgnoreCase(profile.getRole())) {
                     profile.setRole(expected);

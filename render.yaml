@@ -14,6 +14,8 @@ services:
         fromDatabase:
           name: mystudy-db
           property: connectionString
+      - key: ADMIN_EMAIL
+        sync: false
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: GOOGLE_CLIENT_SECRET

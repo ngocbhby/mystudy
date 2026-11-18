@@ -1,6 +1,7 @@
 package vn.mystudy.security;
 
 import java.util.Locale;
+import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsPasswordService;
@@ -16,12 +17,12 @@ import vn.mystudy.auth.repository.ProfileRepository;
 class ProfileUserDetailsService implements UserDetailsService, UserDetailsPasswordService {
 
     private final ProfileRepository profiles;
-    private final String adminEmail;
+    private final Set<String> adminEmails;
 
     ProfileUserDetailsService(ProfileRepository profiles,
             @Value("${app.admin-email:ngocbhbymit@gmail.com}") String adminEmail) {
         this.profiles = profiles;
-        this.adminEmail = adminEmail != null ? adminEmail.trim().toLowerCase(Locale.ROOT) : "";
+        this.adminEmails = AdminSecurity.parseAdminEmails(adminEmail);
     }
 
     @Override
@@ -31,7 +32,7 @@ class ProfileUserDetailsService implements UserDetailsService, UserDetailsPasswo
         Profile profile = profiles.findPasswordProfile(normalizedEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown account"));
 
-        boolean isAdmin = !adminEmail.isBlank() && normalizedEmail.equals(adminEmail);
+        boolean isAdmin = AdminSecurity.isAdmin(normalizedEmail, adminEmails);
         String expectedRole = isAdmin ? "ADMIN" : "USER";
         if (!expectedRole.equalsIgnoreCase(profile.getRole())) {
             profile.setRole(expectedRole);
