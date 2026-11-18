@@ -8,8 +8,10 @@
 
 ### 1. Xác thực & Quản lý Tài khoản (Auth & Identity)
 - **Đa phương thức đăng nhập**: Hỗ trợ đăng ký/đăng nhập bằng **Email & Mật khẩu** hoặc đăng nhập 1 chạm với **Google OAuth 2.0 (PKCE)**.
+- **Xác nhận mật khẩu khi đăng ký**: Form đăng ký yêu cầu nhập lại mật khẩu xác nhận, kiểm tra khớp mật khẩu ngay trên giao diện và backend giúp ngăn ngừa nhập sai mật khẩu ngoài ý muốn.
+- **Quên mật khẩu & Đặt lại mật khẩu**: Cho phép người dùng khôi phục tài khoản khi quên mật khẩu bằng cách xác nhận email tài khoản và thiết lập mật khẩu mới ngay trên hệ thống.
 - **Tự động liên kết tài khoản**: Tài khoản tạo bằng email có thể liên kết mượt mà với tài khoản Google nếu trùng email đã xác minh, tránh nhân đôi dữ liệu.
-- **Bảo mật phiên đăng nhập**: Lưu phiên an toàn trong cơ sở dữ liệu qua Spring Session JDBC, cơ chế chống tấn công CSRF hai lớp và chống Session Fixation.
+- **Bảo mật phiên đăng nhập**: Lưu phiên an toàn trong cơ sở dữ liệu qua Spring Session JDBC, mã hóa Argon2 hiện đại, cơ chế chống tấn công CSRF hai lớp và chống Session Fixation.
 
 ### 2. Thiết lập Mục tiêu & Lập Lộ trình Ôn thi Cá nhân hóa (Study Goal & Planner)
 - **Cá nhân hóa mục tiêu**:

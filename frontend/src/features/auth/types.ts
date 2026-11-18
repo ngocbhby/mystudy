@@ -13,4 +13,11 @@ export interface Session {
 export interface Credentials {
   email: string
   password: string
+  confirmPassword?: string
+}
+
+export interface ResetPasswordPayload {
+  email: string
+  newPassword: string
+  confirmPassword: string
 }

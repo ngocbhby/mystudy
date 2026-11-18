@@ -30,6 +30,10 @@ public final class AuditLog {
         log.info("register.rejected email={}", mask(email));
     }
 
+    public static void passwordReset(String email) {
+        log.info("password.reset email={}", mask(email));
+    }
+
     static String mask(String email) {
         if (email == null) return "-";
         int at = email.indexOf('@');
