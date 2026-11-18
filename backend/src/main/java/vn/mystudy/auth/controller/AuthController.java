@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import vn.mystudy.auth.dto.LoginRequest;
 import vn.mystudy.auth.dto.RegisterRequest;
+import vn.mystudy.auth.dto.ResetPasswordRequest;
 import vn.mystudy.auth.dto.SessionResponse;
 import vn.mystudy.auth.dto.UserResponse;
 import vn.mystudy.auth.service.AuthService;
@@ -55,6 +56,12 @@ class AuthController {
         sessions.establish(authentication, http, response);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok("Tạo tài khoản thành công.", userOf(authentication)));
+    }
+
+    @PostMapping("/auth/reset-password")
+    ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ApiResponse.ok("Đặt lại mật khẩu thành công. Vui lòng đăng nhập bằng mật khẩu mới.", null);
     }
 
     private UserResponse userOf(Authentication authentication) {

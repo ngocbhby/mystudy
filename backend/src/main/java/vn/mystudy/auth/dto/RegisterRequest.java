@@ -12,5 +12,7 @@ public record RegisterRequest(
 
         @NotBlank(message = "Vui lòng nhập mật khẩu.")
         @Size(min = 12, max = 256, message = "Mật khẩu cần từ 12 đến 256 ký tự.")
-        String password) {
+        String password,
+
+        String confirmPassword) {
 }

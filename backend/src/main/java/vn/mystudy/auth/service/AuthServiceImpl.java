@@ -1,6 +1,7 @@
 package vn.mystudy.auth.service;
 
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.mystudy.auth.dto.LoginRequest;
 import vn.mystudy.auth.dto.RegisterRequest;
+import vn.mystudy.auth.dto.ResetPasswordRequest;
 import vn.mystudy.auth.dto.UserResponse;
 import vn.mystudy.auth.entity.Profile;
 import vn.mystudy.auth.mapper.UserMapper;
@@ -55,6 +57,11 @@ class AuthServiceImpl implements AuthService {
 
     @Override
     public Authentication register(RegisterRequest request) {
+        if (request.confirmPassword() != null && !request.confirmPassword().isBlank()
+                && !request.confirmPassword().equals(request.password())) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "Mật khẩu xác nhận không khớp.",
+                    Map.of("confirmPassword", "Mật khẩu xác nhận không khớp."));
+        }
         String email = normalize(request.email());
         String hash = hashingGuard.run(() -> passwordEncoder.encode(request.password()));
         Profile newProfile = Profile.withPassword(email, hash);
@@ -71,6 +78,25 @@ class AuthServiceImpl implements AuthService {
         }
         AuditLog.registered(email);
         return authenticated(new AppUserDetails(profile.getId(), email, null, profile.getRole()));
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        if (!request.newPassword().equals(request.confirmPassword())) {
+            throw new BusinessException(ErrorCode.VALIDATION_FAILED, "Mật khẩu xác nhận không khớp.",
+                    Map.of("confirmPassword", "Mật khẩu xác nhận không khớp."));
+        }
+        String email = normalize(request.email());
+        Profile profile = profiles.findFirstByEmailIgnoreCase(email)
+                .orElseThrow(() -> BusinessException.notFound("Không tìm thấy tài khoản với email này."));
+
+        String hash = hashingGuard.run(() -> passwordEncoder.encode(request.newPassword()));
+        profile.changePasswordHash(hash);
+        profiles.saveAndFlush(profile);
+
+        failedLogins.reset(email);
+        AuditLog.passwordReset(email);
     }
 
     @Override

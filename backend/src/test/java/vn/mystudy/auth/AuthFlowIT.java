@@ -92,6 +92,63 @@ class AuthFlowIT extends IntegrationTest {
     }
 
     @Test
+    void registrationValidatesConfirmPasswordWhenProvided() throws Exception {
+        TestClient client = new TestClient(mvc);
+        String email = email();
+        client.get("/api/session");
+
+        String mismatched = "{\"email\":\"" + email + "\",\"password\":\"a-long-password-123\",\"confirmPassword\":\"different-pass-456\"}";
+        client.post("/api/auth/register", mismatched)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors.confirmPassword").value("Mật khẩu xác nhận không khớp."));
+
+        String matched = "{\"email\":\"" + email + "\",\"password\":\"a-long-password-123\",\"confirmPassword\":\"a-long-password-123\"}";
+        client.post("/api/auth/register", matched)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.email").value(email));
+    }
+
+    @Test
+    void resetPasswordFlowUpdatesPasswordAndAllowsLogin() throws Exception {
+        TestClient client = new TestClient(mvc);
+        String email = email();
+        client.get("/api/session");
+
+        // 1. Tạo tài khoản ban đầu
+        client.post("/api/auth/register", credentials(email, "initial-password-123"))
+                .andExpect(status().isCreated());
+
+        // 2. Thử đặt lại với confirm password không khớp
+        String mismatched = "{\"email\":\"" + email + "\",\"newPassword\":\"new-password-123456\",\"confirmPassword\":\"wrong-password-999\"}";
+        client.post("/api/auth/reset-password", mismatched)
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        // 3. Đặt lại với email không tồn tại
+        String nonExistent = "{\"email\":\"non-existent-" + UUID.randomUUID() + "@example.com\",\"newPassword\":\"new-password-123456\",\"confirmPassword\":\"new-password-123456\"}";
+        client.post("/api/auth/reset-password", nonExistent)
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+
+        // 4. Đặt lại mật khẩu thành công
+        String validReset = "{\"email\":\"" + email + "\",\"newPassword\":\"new-password-123456\",\"confirmPassword\":\"new-password-123456\"}";
+        client.post("/api/auth/reset-password", validReset)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+
+        // 5. Mật khẩu cũ không đăng nhập được nữa
+        client.post("/api/auth/login", credentials(email, "initial-password-123"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("BAD_CREDENTIALS"));
+
+        // 6. Mật khẩu mới đăng nhập thành công
+        client.post("/api/auth/login", credentials(email, "new-password-123456"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.email").value(email));
+    }
+
+    @Test
     void repeatedFailuresForOneEmailAreThrottled() throws Exception {
         TestClient client = new TestClient(mvc);
         String email = email();

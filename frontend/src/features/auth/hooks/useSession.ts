@@ -24,6 +24,12 @@ function useEstablishSession(mutationFn: (credentials: Credentials) => ReturnTyp
 export const useLogin = () => useEstablishSession(authApi.login)
 export const useRegister = () => useEstablishSession(authApi.register)
 
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: authApi.resetPassword,
+  })
+}
+
 /** Xóa toàn bộ cache dữ liệu cá nhân khi đăng xuất hoặc khi phiên hết hạn. */
 export function useResetSession() {
   const queryClient = useQueryClient()
