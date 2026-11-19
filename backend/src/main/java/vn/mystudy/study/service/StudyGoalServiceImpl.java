@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import vn.mystudy.common.api.ErrorCode;
 import vn.mystudy.common.exception.BusinessException;
 import vn.mystudy.common.time.VietnamClock;
 import vn.mystudy.study.StudyCatalog;
+import vn.mystudy.study.analytics.TopicMasteryService;
 import vn.mystudy.study.dto.GoalRequest;
 import vn.mystudy.study.dto.StudyGoalResponse;
 import vn.mystudy.study.entity.GoalSubject;
@@ -52,10 +54,11 @@ class StudyGoalServiceImpl implements StudyGoalService {
     private final GoalValidator validator;
     private final StudyMapper mapper;
     private final VietnamClock clock;
+    private final TopicMasteryService mastery;
 
     StudyGoalServiceImpl(ProfileRepository profiles, StudyGoalRepository goals, StudyPlanRepository plans,
             StudyTaskRepository tasks, TopicRepository topics, StudyScheduler scheduler, GoalValidator validator,
-            StudyMapper mapper, VietnamClock clock) {
+            StudyMapper mapper, VietnamClock clock, TopicMasteryService mastery) {
         this.profiles = profiles;
         this.goals = goals;
         this.plans = plans;
@@ -65,6 +68,7 @@ class StudyGoalServiceImpl implements StudyGoalService {
         this.validator = validator;
         this.mapper = mapper;
         this.clock = clock;
+        this.mastery = mastery;
     }
 
     @Override
@@ -111,8 +115,12 @@ class StudyGoalServiceImpl implements StudyGoalService {
                 .map(t -> new RetainedTask(t.getScheduledOn(), t.getPosition(), t.getPlannedMinutes())).toList();
         Map<String, Double> scores = codes.stream()
                 .collect(Collectors.toMap(Function.identity(), c -> request.scores().get(c).doubleValue()));
+        Map<String, Double> currentScores = currentScoresOf(request, codes);
+        // Chuyên đề làm sai nhiều trong các lượt thi gần đây được xếp ôn thường xuyên hơn (lộ trình thích ứng).
+        Map<UUID, Integer> topicWeights = mastery.scheduleWeights(profileId);
         List<ScheduledTask> schedule = scheduler.schedule(
-                new StudyScheduler.Goal(request.electiveCodes(), scores, goal.getMonths(), goal.getDailyMinutes(), days),
+                new StudyScheduler.Goal(request.purpose(), request.electiveCodes(), scores, currentScores,
+                        goal.getMonths(), goal.getDailyMinutes(), days, topicWeights),
                 curriculum.stream().map(t -> new TopicRef(t.getId(), t.getSubjectCode(), t.getName())).toList(),
                 retained, startsOn, strategy);
 
@@ -122,13 +130,40 @@ class StudyGoalServiceImpl implements StudyGoalService {
         return new StudyGoalResponse(mapper.toResponse(goal), mapper.toResponse(plan));
     }
 
+    private static Map<String, Double> currentScoresOf(GoalRequest request, List<String> codes) {
+        Map<String, Double> result = new HashMap<>();
+        if (request.currentScores() == null) return result;
+        for (String code : codes) {
+            Number value = request.currentScores().get(code);
+            if (value != null) result.put(code, value.doubleValue());
+        }
+        return result;
+    }
+
     private static Set<GoalSubject> subjectsOf(GoalRequest request, List<String> codes) {
         Set<GoalSubject> subjects = new HashSet<>();
+        Map<String, Double> current = currentScoresOf(request, codes);
         for (String code : codes) {
             int electiveIndex = request.electiveCodes().indexOf(code);
             subjects.add(new GoalSubject(code, BigDecimal.valueOf(request.scores().get(code).doubleValue()),
+                    current.containsKey(code) ? BigDecimal.valueOf(current.get(code)) : null,
                     electiveIndex < 0 ? null : electiveIndex + 1));
         }
         return subjects;
+    }
+
+    @Override
+    @Transactional
+    public StudyGoalResponse rebuild(UUID profileId) {
+        StudyGoalResponse current = getCurrent(profileId);
+        if (current.goal() == null) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "Hãy thiết lập mục tiêu trước khi cập nhật lộ trình.");
+        }
+        var goal = current.goal();
+        Map<String, Number> scores = new HashMap<>(goal.scores());
+        Map<String, Number> currentScores = new HashMap<>(goal.currentScores());
+        List<Number> days = new ArrayList<>(goal.days());
+        return save(profileId, new GoalRequest(goal.purpose(), goal.electiveCodes(), scores, currentScores,
+                goal.months(), goal.dailyMinutes(), days, current.plan().strategy()));
     }
 }

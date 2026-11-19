@@ -18,6 +18,7 @@ import { paths } from '@/app/router/paths'
 import { colors } from '@/app/theme/theme'
 import { formatFullDate, getVietnamDate } from '@/lib/date/vietnam-date'
 import { formatNumber, formatScore } from '@/lib/format'
+import { TopicNoteView } from '@/features/ai/components/TopicNoteView'
 import { ErrorNotice } from '@/shared/components/ErrorNotice'
 import { LoadingState } from '@/shared/components/LoadingState'
 import { Kicker } from '@/shared/components/PageHeader'
@@ -35,92 +36,15 @@ function taskCategory(task: Task): string {
   return 'Củng cố kiến thức'
 }
 
-function TopicContent({ task }: { task: Task }) {
-  if (task.subjectCode === 'math' && task.topic.includes('Đạo hàm')) {
-    return (
-      <Box sx={{ my: 2.5 }}>
-        <Typography sx={{ fontWeight: 500, lineHeight: 1.9 }}>
-          (xⁿ)′ = n·xⁿ⁻¹
-          <br />
-          (u + v)′ = u′ + v′
-          <br />
-          (u·v)′ = u′v + uv′
-        </Typography>
-        <Typography color="text.secondary" sx={{ mt: 2 }}>
-          Ví dụ: y = x³ − 3x + 2<br />⇒ y′ = 3x² − 3.
-        </Typography>
-      </Box>
-    )
-  }
-
-  if (task.subjectCode === 'math' && task.topic.includes('Nguyên hàm')) {
-    return (
-      <Box sx={{ my: 2.5 }}>
-        <Typography sx={{ fontWeight: 500, lineHeight: 1.9 }}>
-          ∫ xⁿ dx = xⁿ⁺¹/(n+1) + C (n ≠ −1)
-          <br />
-          ∫ 1/x dx = ln|x| + C
-          <br />
-          ∫ eˣ dx = eˣ + C
-        </Typography>
-        <Typography color="text.secondary" sx={{ mt: 2 }}>
-          Định lý Newton-Leibniz: ∫ₐᵇ f(x)dx = F(b) − F(a).
-        </Typography>
-      </Box>
-    )
-  }
-
-  if (task.subjectCode === 'math' && task.topic.includes('Oxyz')) {
-    return (
-      <Box sx={{ my: 2.5 }}>
-        <Typography sx={{ fontWeight: 500, lineHeight: 1.9 }}>
-          a⃗·b⃗ = x₁x₂ + y₁y₂ + z₁z₂
-          <br />
-          Mặt phẳng: A(x − x₀) + B(y − y₀) + C(z − z₀) = 0
-        </Typography>
-        <Typography color="text.secondary" sx={{ mt: 2 }}>
-          Mặt cầu: (x − a)² + (y − b)² + (z − c)² = R².
-        </Typography>
-      </Box>
-    )
-  }
-
-  if (task.subjectCode === 'english') {
-    return (
-      <Box sx={{ my: 2.5 }}>
-        <Typography sx={{ fontWeight: 500, lineHeight: 1.8 }}>
-          1. Đọc lướt câu để nắm ngữ cảnh tổng thể.
-          <br />
-          2. Xác định từ loại cần điền (noun / verb / adj / adv).
-          <br />
-          3. Kiểm tra thì, cấu trúc ngữ pháp và giới từ đi kèm.
-        </Typography>
-        <Typography color="text.secondary" sx={{ mt: 2 }}>
-          {task.content}
-        </Typography>
-      </Box>
-    )
-  }
-
-  if (task.subjectCode === 'literature') {
-    return (
-      <Box sx={{ my: 2.5 }}>
-        <Typography sx={{ fontWeight: 500, lineHeight: 1.8 }}>
-          Cấu trúc đoạn văn 200 chữ:
-          <br />
-          Mở đoạn (nêu vấn đề) → Giải thích → Bàn luận & Dẫn chứng → Phản biện → Bài học bản thân.
-        </Typography>
-        <Typography color="text.secondary" sx={{ mt: 2 }}>
-          {task.content}
-        </Typography>
-      </Box>
-    )
-  }
-
+/** Nội dung buổi học; khi mở hộp thoại thì kèm ghi chú kiến thức cốt lõi của chuyên đề (lấy từ CSDL). */
+function TopicContent({ task, full = false }: { task: Task; full?: boolean }) {
   return (
-    <Typography color="text.secondary" sx={{ my: 2.5 }}>
-      {task.content}
-    </Typography>
+    <Box sx={{ my: 2.5 }}>
+      <Typography color="text.secondary" sx={{ mb: full ? 2 : 0 }}>
+        {task.content}
+      </Typography>
+      {full && task.topicId && <TopicNoteView topicId={task.topicId} />}
+    </Box>
   )
 }
 
@@ -521,7 +445,7 @@ export default function OverviewPage() {
               </IconButton>
             </DialogTitle>
             <DialogContent dividers>
-              <TopicContent task={activeTask} />
+              <TopicContent task={activeTask} full />
             </DialogContent>
             <DialogActions sx={{ p: 2.5 }}>
               {activeTask.completed ? (

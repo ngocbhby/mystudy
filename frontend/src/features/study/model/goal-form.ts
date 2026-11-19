@@ -7,6 +7,7 @@ export const initialGoal: Goal = {
   purpose: 'university_admission',
   electiveCodes: ['physics', 'english'],
   scores: { math: 8, literature: 7.5, physics: 8, english: 8.5 },
+  currentScores: {},
   months: 6,
   dailyMinutes: 90,
   days: [1, 2, 3, 4, 5],
@@ -22,6 +23,8 @@ export const goalFormSchema = z
       .tuple([z.enum(electives), z.enum(electives)])
       .refine(([a, b]) => a !== b, 'Hãy chọn hai môn tự chọn khác nhau.'),
     scores: z.record(z.string(), z.string()),
+    /** Điểm hiện tại tự đánh giá; bỏ trống được. */
+    currentScores: z.record(z.string(), z.string()).optional(),
     months: z.string(),
     dailyHours: z.string(),
     days: z.array(z.number().int().min(1).max(7)).min(1, 'Hãy chọn ít nhất một ngày học trong tuần.'),
@@ -31,6 +34,10 @@ export const goalFormSchema = z
       const score = parseDecimal(values.scores[code] ?? '')
       if (!(score >= 0 && score <= 10))
         ctx.addIssue({ code: 'custom', path: ['scores', code], message: 'Nhập điểm từ 0 đến 10.' })
+      const raw = values.currentScores?.[code]?.trim() ?? ''
+      const current = parseDecimal(raw)
+      if (raw !== '' && !(current >= 0 && current <= 10))
+        ctx.addIssue({ code: 'custom', path: ['currentScores', code], message: 'Nhập điểm từ 0 đến 10 hoặc để trống.' })
     }
     const months = /^\d+$/.test(values.months.trim()) ? Number(values.months) : NaN
     if (!(months >= 1 && months <= 24)) {
@@ -57,6 +64,9 @@ export function toFormValues(goal: Goal): GoalFormValues {
     scores: Object.fromEntries(
       Object.entries(goal.scores).map(([code, value]) => [code, formatScore(value ?? 0)]),
     ),
+    currentScores: Object.fromEntries(
+      Object.entries(goal.currentScores ?? {}).map(([code, value]) => [code, formatScore(value ?? 0)]),
+    ),
     months: String(goal.months),
     dailyHours: format(goal.dailyMinutes / 60),
     days: goal.days,
@@ -69,6 +79,11 @@ export function toGoalInput(values: GoalFormValues): GoalInput {
     purpose: values.purpose as Goal['purpose'],
     electiveCodes: [...values.electiveCodes],
     scores: Object.fromEntries(codes.map((code) => [code, parseDecimal(values.scores[code] ?? '')])),
+    currentScores: Object.fromEntries(
+      codes
+        .filter((code) => (values.currentScores?.[code] ?? '').trim() !== '')
+        .map((code) => [code, parseDecimal(values.currentScores?.[code] ?? '')]),
+    ),
     months: Number(values.months),
     dailyMinutes: Math.round(parseDecimal(values.dailyHours) * 60),
     days: [...values.days].sort((a, b) => a - b),
@@ -92,5 +107,6 @@ export function toFormField(serverField: string): string {
   if (serverField === 'electives') return 'electiveCodes'
   if (serverField === 'dailyMinutes') return 'dailyHours'
   if (serverField === 'purpose' || serverField === 'months' || serverField === 'days') return serverField
+  if (serverField.startsWith('current_')) return `currentScores.${serverField.slice('current_'.length)}`
   return `scores.${serverField}`
 }

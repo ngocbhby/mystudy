@@ -70,9 +70,26 @@ Schema do **Flyway** quản lý: các file `backend/src/main/resources/db/migrat
 | V6 | Chuyển sang Spring Security: gắn nhãn `{legacyscrypt}` cho mã băm scrypt cũ (tự nâng cấp lên Argon2 khi đăng nhập), thêm ràng buộc định dạng mã băm, xóa bảng phiên/OAuth cũ. |
 | V7 | Bảng `spring_session` và `spring_session_attributes`. |
 | V8 | Kho bài mẫu: chuyên đề phân loại (Hàm số, Nghị luận xã hội, Kĩ năng viết) và ba bài mẫu đầu tiên. |
+| V9–V10 | Cột `profiles.role` (USER/ADMIN). |
+| V11 | Bảng `uploaded_documents` lưu PDF tải lên. |
+| V12 | Lời giải `exam_questions.explanation`, cột `score`, `elapsed_seconds` cho lượt thi. |
+| V13 | Thu hồi quyền ADMIN của hồ sơ chỉ có mật khẩu; ràng buộc `expires_at > started_at`; `exam_questions.topic_id`; `goal_subjects.current_score`; bảng AI: `ai_explanations`, `topic_notes`, `ai_usage`, `ai_weakness_reports`. |
 
 **CSDL đã tạo từ bản Node.js** (đã chạy tay V1–V5): cấu hình `baseline-version: 5` cho Flyway nhận đó làm điểm xuất phát, nên lần khởi động đầu chỉ chạy V6 và V7. Người dùng đang đăng nhập sẽ phải đăng nhập lại một lần vì phiên cũ bị xóa. Tài khoản email cũ vẫn đăng nhập được với mật khẩu hiện tại.
 
-**Không sửa migration đã áp dụng.** Muốn đổi schema, thêm file `V8__...sql`.
+**Không sửa migration đã áp dụng.** Muốn đổi schema, thêm file mới (tiếp theo là `V14__...sql`).
+
+## Lượt thi (cập nhật V13)
+
+`POST /api/exams/{id}/attempts/start` tạo lượt thi với `started_at` và `expires_at` do máy chủ tính; khách nhận token ngẫu nhiên, chỉ hash SHA-256 được lưu ở `guest_token_hash`. `POST /api/exams/{id}/attempts/{attemptId}/submit` khóa dòng lượt thi (`SELECT ... FOR UPDATE`), chỉ chốt điểm một lần, tự tính thời gian làm bài; quá hạn hơn 60 giây thì không nhận đáp án. Chưa có tác vụ nền tự nộp lượt thi bị bỏ dở: các lượt chưa nộp không hiện trong lịch sử.
+
+## Dữ liệu AI (V13)
+
+| Bảng | Nội dung |
+| --- | --- |
+| `ai_explanations` | Lời giải thích câu sai theo (phiên bản đề, câu, lựa chọn sai), kèm tên mô hình và số lượt bị báo sai. |
+| `topic_notes` | Ghi chú kiến thức theo chuyên đề; `ai_generated` cho biết do AI soạn hay giáo viên viết. |
+| `ai_usage` | Số lượt gọi AI theo người học và ngày (hạn mức). |
+| `ai_weakness_reports` | Nhận xét điểm yếu gần nhất của mỗi người học và số lượt thi làm căn cứ. |
 
 Phát triển cục bộ không cần cài PostgreSQL: xem phần *Chạy dự án* ở [README](../README.md).

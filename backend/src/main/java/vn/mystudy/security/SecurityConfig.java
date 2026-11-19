@@ -90,8 +90,13 @@ class SecurityConfig {
             .authorizeHttpRequests(a -> a
                 .requestMatchers("/actuator/health/**").permitAll()
                 .requestMatchers("/api/session", "/api/auth/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/exams", "/api/exams/**", "/api/samples", "/api/documents/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/exams/*/attempts").permitAll()
+                // Khóa đáp án chỉ dành cho quản trị; học sinh xem lời giải qua kết quả lượt thi đã nộp.
+                .requestMatchers(HttpMethod.GET, "/api/exams/*/answers").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/exams", "/api/exams/**", "/api/samples", "/api/documents/**",
+                        "/api/topics/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/exams/*/attempts/start",
+                        "/api/exams/*/attempts/*/submit").permitAll()
+                .requestMatchers("/api/ai/**").authenticated()
                 .requestMatchers("/api/study/**").authenticated()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/**").denyAll()

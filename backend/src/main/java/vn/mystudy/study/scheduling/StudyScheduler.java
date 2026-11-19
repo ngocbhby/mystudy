@@ -2,7 +2,6 @@ package vn.mystudy.study.scheduling;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -10,19 +9,20 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 import vn.mystudy.study.StudyCatalog;
 
 /**
- * Xếp lịch học: chia đều thời gian mỗi ngày học cho các môn (môn điểm mục tiêu cao xếp trước),
- * mỗi nhiệm vụ tối đa 45 phút, xoay vòng chuyên đề theo chiến lược.
+ * Xếp lịch học. Mỗi ngày học được chia thành các nhiệm vụ tối đa 45 phút. Môn nào cũng có trọng số; mỗi lượt xếp
+ * chọn môn đang "thiếu" thời gian nhiều nhất so với phần đáng được nhận (cân bằng có trọng số).
  *
  * <p><b>Hai chiến lược khác nhau rõ rệt:</b>
  * <ul>
- *   <li><b>exam_focused</b>: Học ngược từ chuyên đề cuối → đầu (đề thi thường ra phần sau/khó),
- *       luyện đề có bấm giờ, lặp lại chuyên đề yếu nhiều lần trước khi sang chuyên đề mới.</li>
- *   <li><b>foundation_first</b>: Học theo đúng thứ tự chương trình (đầu → cuối),
- *       ôn kiến thức cốt lõi, hiểu kỹ từng phần trước khi tiến.</li>
+ *   <li><b>exam_focused</b>: Ưu tiên môn điểm mục tiêu cao, học từ chuyên đề cuối → đầu,
+ *       luyện đề có bấm giờ, phân tích đề mẫu, bài nâng cao.</li>
+ *   <li><b>foundation_first</b>: Ưu tiên môn điểm thấp, học từ chuyên đề đầu → cuối,
+ *       ôn lý thuyết, ví dụ minh họa, tự làm bài tập cơ bản.</li>
  * </ul>
  * Thuần logic nên kiểm thử không cần CSDL.
  */
@@ -30,10 +30,28 @@ import vn.mystudy.study.StudyCatalog;
 public class StudyScheduler {
 
     static final int MAX_TASK_MINUTES = 45;
+    private static final double MIN_SUBJECT_WEIGHT = 0.5;
+    private static final double AT_RISK_BONUS = 1.5;
     private static final Locale VIETNAMESE = Locale.forLanguageTag("vi-VN");
 
-    public record Goal(List<String> electiveCodes, Map<String, Double> scores, int months, int dailyMinutes,
-            Set<Integer> days) {
+    /**
+     * @param currentScores điểm hiện tại tự đánh giá (có thể thiếu môn, hoặc rỗng)
+     * @param topicWeights  trọng số chuyên đề từ phân tích kết quả thi (1 = bình thường, cao hơn = cần ôn nhiều hơn)
+     */
+    public record Goal(String purpose, List<String> electiveCodes, Map<String, Double> scores,
+            Map<String, Double> currentScores, int months, int dailyMinutes, Set<Integer> days,
+            Map<UUID, Integer> topicWeights) {
+
+        public Goal {
+            currentScores = currentScores == null ? Map.of() : currentScores;
+            topicWeights = topicWeights == null ? Map.of() : topicWeights;
+        }
+
+        /** Mục tiêu không có điểm hiện tại hay trọng số chuyên đề. */
+        public Goal(List<String> electiveCodes, Map<String, Double> scores, int months, int dailyMinutes,
+                Set<Integer> days) {
+            this("university_admission", electiveCodes, scores, Map.of(), months, dailyMinutes, days, Map.of());
+        }
     }
 
     public record TopicRef(UUID id, String subjectCode, String name) {
@@ -52,81 +70,119 @@ public class StudyScheduler {
         LocalDate end = startsOn.plusMonths(goal.months());
         List<String> codes = new ArrayList<>(StudyCatalog.REQUIRED);
         codes.addAll(goal.electiveCodes());
-        // exam_focused: ưu tiên môn điểm mục tiêu cao (cần cải thiện nhiều nhất)
-        // foundation_first: ưu tiên môn điểm thấp (nền tảng yếu cần củng cố trước)
+
         boolean examFocused = "exam_focused".equals(strategy);
+        // exam_focused: môn điểm mục tiêu cao xếp trước
+        // foundation_first: môn điểm thấp xếp trước
         if (examFocused) {
             codes.sort(Comparator.<String, Double>comparing(code -> goal.scores().get(code)).reversed());
         } else {
             codes.sort(Comparator.<String, Double>comparing(code -> goal.scores().get(code)));
         }
 
-        // Sắp xếp danh sách chuyên đề theo chiến lược
-        Map<String, List<TopicRef>> grouped = new HashMap<>();
-        for (TopicRef t : topics) {
-            grouped.computeIfAbsent(t.subjectCode(), k -> new ArrayList<>()).add(t);
-        }
-        // exam_focused: học từ chuyên đề cuối (phức tạp) → đầu (cơ bản), lặp lại nhiều lần
-        // foundation_first: học theo đúng thứ tự chương trình (đầu → cuối)
-        for (Map.Entry<String, List<TopicRef>> entry : grouped.entrySet()) {
-            if (examFocused) {
-                // Đảo ngược thứ tự: chuyên đề cuối chương trình (thường ra đề nhiều) học trước
-                java.util.Collections.reverse(entry.getValue());
+        Map<String, List<TopicRef>> grouped = topics.stream().collect(Collectors.groupingBy(TopicRef::subjectCode));
+        Map<String, List<TopicRef>> rotations = new HashMap<>();
+        for (String code : codes) {
+            List<TopicRef> available = grouped.get(code);
+            if (available == null || available.isEmpty()) {
+                throw new IllegalStateException("Missing topics for " + code);
             }
-            // foundation_first giữ nguyên thứ tự curriculum_order từ DB (đầu → cuối)
+            rotations.put(code, rotation(available, goal.topicWeights(), examFocused));
         }
+
+        Map<String, Double> weights = new HashMap<>();
+        codes.forEach(code -> weights.put(code, subjectWeight(code, goal)));
+        Map<String, Integer> allocated = new HashMap<>();
+        Map<String, Integer> topicCursor = new HashMap<>();
 
         Map<LocalDate, List<RetainedTask>> retainedByDay = new HashMap<>();
         retained.forEach(task -> retainedByDay.computeIfAbsent(task.date(), d -> new ArrayList<>()).add(task));
 
         List<ScheduledTask> tasks = new ArrayList<>();
-        // Mỗi môn có con trỏ chuyên đề riêng để xoay vòng độc lập
-        Map<String, Integer> topicPointer = new HashMap<>();
-        codes.forEach(code -> topicPointer.put(code, 0));
-
-        int slot = 0;
         for (LocalDate day = startsOn; day.isBefore(end); day = day.plusDays(1)) {
             if (!goal.days().contains(day.getDayOfWeek().getValue())) continue;
             List<RetainedTask> kept = retainedByDay.getOrDefault(day, List.of());
             int remaining = goal.dailyMinutes() - kept.stream().mapToInt(RetainedTask::minutes).sum();
             int position = kept.stream().mapToInt(RetainedTask::position).max().orElse(0) + 1;
             while (remaining > 0) {
-                String code = codes.get(slot % codes.size());
-                List<TopicRef> available = grouped.get(code);
-                if (available == null || available.isEmpty()) {
-                    throw new IllegalStateException("Missing topics for " + code);
-                }
-                // exam_focused: mỗi lần hết vòng một môn, chuyển sang chuyên đề tiếp theo
-                // foundation_first: tiến tuần tự, chỉ lặp lại chuyên đề hiện tại thêm 1 lần trước khi sang tiếp
-                int pointer = topicPointer.get(code);
-                TopicRef topic = available.get(pointer % available.size());
+                String code = mostBehind(codes, weights, allocated);
+                List<TopicRef> rotation = rotations.get(code);
+                int cursor = topicCursor.merge(code, 1, Integer::sum) - 1;
+                TopicRef topic = rotation.get(cursor % rotation.size());
                 int minutes = Math.min(remaining, MAX_TASK_MINUTES);
                 tasks.add(new ScheduledTask(day, position, code, topic.id(), minutes,
-                        content(topic, examFocused, pointer, available.size())));
-                // Tăng pointer: exam_focused mỗi slot tăng 1 (xoay nhanh), foundation_first tăng mỗi 2 slot (học kỹ hơn)
-                if (examFocused || (slot / codes.size()) % 2 == 1) {
-                    topicPointer.put(code, pointer + 1);
-                }
+                        content(topic, examFocused, cursor, rotation.size())));
+                allocated.merge(code, minutes, Integer::sum);
                 position++;
-                slot++;
                 remaining -= minutes;
             }
         }
         return tasks;
     }
 
+    /** Trọng số môn: khoảng cách tới mục tiêu (nếu biết điểm hiện tại), cộng ưu tiên môn có nguy cơ khi chỉ cần tốt nghiệp. */
+    static double subjectWeight(String code, Goal goal) {
+        Double current = goal.currentScores().get(code);
+        if (current == null) return 1.0;
+        double target = goal.scores().getOrDefault(code, current);
+        double weight = Math.max(MIN_SUBJECT_WEIGHT, target - current);
+        if ("graduation".equals(goal.purpose()) && current < 5) weight *= AT_RISK_BONUS;
+        return weight;
+    }
+
+    /** Môn có số phút đã xếp so với trọng số thấp nhất; hòa thì theo thứ tự ưu tiên trong codes. */
+    private static String mostBehind(List<String> codes, Map<String, Double> weights, Map<String, Integer> allocated) {
+        String best = codes.get(0);
+        double bestRatio = Double.MAX_VALUE;
+        for (String code : codes) {
+            double ratio = allocated.getOrDefault(code, 0) / weights.get(code);
+            if (ratio < bestRatio - 1e-9) {
+                best = code;
+                bestRatio = ratio;
+            }
+        }
+        return best;
+    }
+
+    /**
+     * Vòng chuyên đề của một môn: chuyên đề trọng số w xuất hiện w lần mỗi vòng, rải đều (cân bằng có trọng số).
+     * "Sát đề" bắt đầu từ chuyên đề cuối (luyện dạng bài tổng hợp), "Nền tảng" bắt đầu từ chuyên đề đầu.
+     */
+    static List<TopicRef> rotation(List<TopicRef> topics, Map<UUID, Integer> topicWeights, boolean examFocused) {
+        List<TopicRef> ordered = new ArrayList<>(topics);
+        if (examFocused) {
+            ordered.add(0, ordered.remove(ordered.size() - 1));
+        }
+        int[] weight = new int[ordered.size()];
+        int total = 0;
+        for (int i = 0; i < ordered.size(); i++) {
+            weight[i] = Math.max(1, Math.min(4, topicWeights.getOrDefault(ordered.get(i).id(), 1)));
+            total += weight[i];
+        }
+        int[] current = new int[ordered.size()];
+        List<TopicRef> result = new ArrayList<>(total);
+        for (int step = 0; step < total; step++) {
+            int pick = 0;
+            for (int i = 0; i < ordered.size(); i++) {
+                current[i] += weight[i];
+                if (current[i] > current[pick]) pick = i;
+            }
+            current[pick] -= total;
+            result.add(ordered.get(pick));
+        }
+        return result;
+    }
+
     private static String content(TopicRef topic, boolean examFocused, int pointer, int total) {
         String name = topic.name().toLowerCase(VIETNAMESE);
-        int topicIndex = pointer % total;
+        int topicIndex = pointer % Math.max(1, total);
         if (examFocused) {
-            // Xoay vòng giữa các loại bài luyện: luyện đề → phân tích lỗi → làm thêm bài khó
             return switch (topicIndex % 3) {
-                case 0 -> "Luyện dạng bài về " + name + ". Làm bài có bấm giờ, ghi lại lỗi và cách sửa.";
+                case 0 -> "Luyện dạng bài về " + name + ". Làm bài có bấm giờ, sau đó ghi lại lỗi và cách sửa.";
                 case 1 -> "Phân tích đề mẫu về " + name + ". Hiểu cách ra đề, nhận dạng bẫy thường gặp.";
                 default -> "Thử sức bài nâng cao về " + name + ". Làm không xem gợi ý, kiểm tra lại sau.";
             };
         } else {
-            // Xoay vòng giữa các bước học nền tảng: đọc lý thuyết → ví dụ → tự làm
             return switch (topicIndex % 3) {
                 case 0 -> "Ôn lý thuyết " + name + ". Tóm tắt ý chính bằng sơ đồ hoặc ghi chú ngắn.";
                 case 1 -> "Xem ví dụ minh họa về " + name + ". Hiểu từng bước, tự giải thích lại bằng lời.";

@@ -38,6 +38,17 @@ public class GoalValidator {
             }
         }
 
+        if (goal.currentScores() != null) {
+            for (Map.Entry<String, Number> entry : goal.currentScores().entrySet()) {
+                Number score = entry.getValue();
+                if (!codes.contains(entry.getKey())) continue;
+                if (score != null && (!Double.isFinite(score.doubleValue()) || score.doubleValue() < 0
+                        || score.doubleValue() > 10)) {
+                    errors.put("current_" + entry.getKey(), "Nhập điểm hiện tại từ 0 đến 10.");
+                }
+            }
+        }
+
         if (!isInteger(goal.months()) || goal.months().intValue() < 1 || goal.months().intValue() > 24) {
             errors.put("months", "Nhập số tháng nguyên từ 1 đến 24.");
         }

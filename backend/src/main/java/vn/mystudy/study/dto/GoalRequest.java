@@ -11,6 +11,7 @@ public record GoalRequest(
         String purpose,
         List<String> electiveCodes,
         Map<String, Number> scores,
+        Map<String, Number> currentScores,
         Number months,
         Number dailyMinutes,
         List<Number> days,

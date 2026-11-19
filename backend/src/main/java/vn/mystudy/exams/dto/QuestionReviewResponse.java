@@ -1,6 +1,7 @@
 package vn.mystudy.exams.dto;
 
 import java.util.List;
+import java.util.UUID;
 
 public record QuestionReviewResponse(
         int number,
@@ -9,5 +10,6 @@ public record QuestionReviewResponse(
         int correctOption,
         Integer userOption,
         boolean isCorrect,
-        String explanation
+        String explanation,
+        UUID topicId
 ) {}
