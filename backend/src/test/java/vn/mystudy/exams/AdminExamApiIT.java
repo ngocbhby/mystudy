@@ -114,6 +114,19 @@ class AdminExamApiIT extends IntegrationTest {
 
         String createdId = JsonPath.read(res.getResponse().getContentAsString(), "$.data.id");
 
+        // 2.5 Cập nhật tiêu đề đề thi
+        String updatePayload = """
+                {
+                    "title": "Đề thi thử THPT Quốc gia 2026 môn Toán (Đã cập nhật)",
+                    "subjectCode": "math",
+                    "examYear": 2026,
+                    "durationMinutes": 90
+                }
+                """;
+        client.put("/api/admin/exams/" + createdId, updatePayload)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.title").value("Đề thi thử THPT Quốc gia 2026 môn Toán (Đã cập nhật)"));
+
         // 3. Xóa đề vừa tạo
         client.delete("/api/admin/exams/" + createdId)
                 .andExpect(status().isOk())

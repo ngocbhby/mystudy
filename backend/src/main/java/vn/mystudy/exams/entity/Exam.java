@@ -88,4 +88,29 @@ public class Exam {
     public String getAnswerGuideUrl() {
         return answerGuideUrl;
     }
+
+    public void update(String title, String subjectCode, Integer examYear, Integer durationMinutes,
+            String sourceName, String paperUrl, String answerGuideUrl) {
+        if (title != null && !title.isBlank()) {
+            this.title = title.trim();
+        }
+        if (subjectCode != null && !subjectCode.isBlank()) {
+            this.subjectCode = subjectCode.trim().toLowerCase();
+        }
+        if (examYear != null) {
+            this.examYear = examYear;
+        }
+        if (durationMinutes != null && durationMinutes > 0) {
+            this.durationMinutes = durationMinutes;
+        }
+        if (sourceName != null && !sourceName.isBlank()) {
+            this.sourceName = sourceName.trim();
+        }
+        if (paperUrl != null && !paperUrl.isBlank()) {
+            this.paperUrl = paperUrl.trim();
+        }
+        if (answerGuideUrl != null && !answerGuideUrl.isBlank()) {
+            this.answerGuideUrl = answerGuideUrl.trim();
+        }
+    }
 }

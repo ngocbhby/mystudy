@@ -144,6 +144,38 @@ class AdminExamServiceImpl implements AdminExamService {
     }
 
     @Override
+    public ExamSummaryResponse updateExam(UUID examId, vn.mystudy.exams.dto.UpdateExamRequest request) {
+        Exam exam = exams.findById(examId)
+                .orElseThrow(() -> BusinessException.notFound("Không tìm thấy đề thi cần cập nhật."));
+
+        if (request.subjectCode() != null && !request.subjectCode().isBlank()) {
+            String subject = request.subjectCode().trim().toLowerCase();
+            if (!StudyCatalog.SUBJECTS.containsKey(subject)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "Mã môn học không hợp lệ: " + subject);
+            }
+        }
+
+        exam.update(
+                request.title(),
+                request.subjectCode(),
+                request.examYear(),
+                request.durationMinutes(),
+                request.sourceName(),
+                request.paperUrl(),
+                request.answerGuideUrl()
+        );
+
+        exams.save(exam);
+
+        int qCount = 0;
+        List<ExamVersion> vList = versions.findByExamId(examId);
+        if (!vList.isEmpty()) {
+            qCount = questions.findByIdVersionIdOrderByIdQuestionNumber(vList.get(0).getId()).size();
+        }
+        return mapper.toSummary(exam, qCount);
+    }
+
+    @Override
     public void deleteExam(UUID examId) {
         Exam exam = exams.findById(examId)
                 .orElseThrow(() -> BusinessException.notFound("Không tìm thấy đề thi cần xóa."));

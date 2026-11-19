@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { adminApi } from '../api/admin-api'
-import type { CreateExamPayload } from '../types'
+import type { CreateExamPayload, UpdateExamPayload } from '../types'
 
 export const adminKeys = {
   all: ['admin'] as const,
@@ -18,6 +18,18 @@ export function useCreateExam() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (payload: CreateExamPayload) => adminApi.createExam(payload),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: adminKeys.all })
+      void queryClient.invalidateQueries({ queryKey: ['exams'] })
+    },
+  })
+}
+
+export function useUpdateExam() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateExamPayload }) =>
+      adminApi.updateExam(id, payload),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: adminKeys.all })
       void queryClient.invalidateQueries({ queryKey: ['exams'] })

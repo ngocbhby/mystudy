@@ -19,4 +19,14 @@ export interface CreateExamPayload {
   questions?: CreateQuestionPayload[]
 }
 
+export interface UpdateExamPayload {
+  title: string
+  subjectCode?: string
+  examYear?: number
+  durationMinutes?: number
+  sourceName?: string
+  paperUrl?: string
+  answerGuideUrl?: string
+}
+
 export type AdminExamSummary = ExamSummary
