@@ -9,6 +9,7 @@ import { useLogout, useSession } from '@/features/auth/hooks/useSession'
 const nav = [
   { to: paths.overview, label: 'Tổng quan' },
   { to: paths.plan, label: 'Lộ trình' },
+  { to: paths.analysis, label: 'Phân tích' },
   { to: paths.exams, label: 'Kho đề thi' },
   { to: paths.samples, label: 'Kho bài mẫu' },
   { to: paths.practice, label: 'Thi thử' },

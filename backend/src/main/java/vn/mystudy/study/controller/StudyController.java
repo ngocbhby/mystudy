@@ -49,6 +49,11 @@ class StudyController {
                 .body(ApiResponse.ok("Đã lưu mục tiêu và tạo lộ trình.", goalService.save(user.profileId(), request)));
     }
 
+    @PostMapping("/plan/rebuild")
+    ApiResponse<StudyGoalResponse> rebuildPlan(@AuthenticationPrincipal ProfilePrincipal user) {
+        return ApiResponse.ok("Đã cập nhật lộ trình theo kết quả thi gần đây.", goalService.rebuild(user.profileId()));
+    }
+
     @GetMapping("/overview")
     ApiResponse<OverviewResponse> overview(@AuthenticationPrincipal ProfilePrincipal user) {
         return ApiResponse.ok(taskService.overview(user.profileId()));

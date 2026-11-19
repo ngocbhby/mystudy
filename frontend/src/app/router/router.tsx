@@ -53,6 +53,10 @@ export const router = createBrowserRouter([
             path: paths.goal,
             lazy: async () => ({ Component: (await import('@/features/study/pages/GoalPage')).default }),
           },
+          {
+            path: paths.analysis,
+            lazy: async () => ({ Component: (await import('@/features/ai/pages/AnalysisPage')).default }),
+          },
         ],
       },
       // Khu vực dành riêng cho Quản trị viên (ADMIN).

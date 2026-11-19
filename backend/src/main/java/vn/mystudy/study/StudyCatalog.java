@@ -29,6 +29,7 @@ public final class StudyCatalog {
         map.put("informatics", "Tin học");
         map.put("technology", "Công nghệ");
         map.put("english", "Tiếng Anh");
-        return Map.copyOf(map);
+        // Map.copyOf làm mất thứ tự; giữ thứ tự khai báo để danh sách môn tự chọn ổn định.
+        return java.util.Collections.unmodifiableMap(map);
     }
 }

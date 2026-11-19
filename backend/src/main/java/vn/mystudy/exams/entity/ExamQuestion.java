@@ -1,5 +1,7 @@
 package vn.mystudy.exams.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -17,10 +19,23 @@ public class ExamQuestion {
     @Column(name = "explanation", columnDefinition = "text")
     private String explanation;
 
+    /** Chuyên đề của câu hỏi; dùng để phân tích điểm yếu theo chuyên đề. */
+    @Column(name = "topic_id")
+    private UUID topicId;
+
     protected ExamQuestion() {}
 
     public ExamQuestion(QuestionId id, String prompt) {
         this(id, prompt, null);
+    }
+
+    public ExamQuestion(QuestionId id, String prompt, String explanation, UUID topicId) {
+        this(id, prompt, explanation);
+        this.topicId = topicId;
+    }
+
+    public UUID getTopicId() {
+        return topicId;
     }
 
     public ExamQuestion(QuestionId id, String prompt, String explanation) {

@@ -42,12 +42,8 @@ public class DocumentController {
         String encodedFilename = URLEncoder.encode(doc.getFilename(), StandardCharsets.UTF_8).replace("+", "%20");
         String contentDisposition = "inline; filename=\"" + doc.getFilename().replaceAll("\"", "") + "\"; filename*=UTF-8''" + encodedFilename;
 
-        MediaType mediaType;
-        try {
-            mediaType = MediaType.parseMediaType(doc.getContentType());
-        } catch (Exception e) {
-            mediaType = MediaType.APPLICATION_PDF;
-        }
+        // Luôn trả về PDF: không phát lại Content-Type do người tải lên khai báo (tránh XSS qua file HTML).
+        MediaType mediaType = MediaType.APPLICATION_PDF;
 
         return ResponseEntity.status(HttpStatus.OK)
                 .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition)

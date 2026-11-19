@@ -11,5 +11,6 @@ import org.hibernate.type.SqlTypes;
 public record GoalSubject(
         @Column(name = "subject_code") String subjectCode,
         @Column(name = "target_score") BigDecimal targetScore,
+        @Column(name = "current_score") BigDecimal currentScore,
         @Column(name = "elective_order") @JdbcTypeCode(SqlTypes.SMALLINT) Integer electiveOrder) {
 }

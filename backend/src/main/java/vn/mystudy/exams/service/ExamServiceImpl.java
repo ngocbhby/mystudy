@@ -2,6 +2,12 @@ package vn.mystudy.exams.service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Duration;
+import java.util.Base64;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -25,6 +31,7 @@ import vn.mystudy.exams.dto.ExamSummaryResponse;
 import vn.mystudy.exams.dto.OptionResponse;
 import vn.mystudy.exams.dto.QuestionResponse;
 import vn.mystudy.exams.dto.QuestionReviewResponse;
+import vn.mystudy.exams.dto.StartAttemptResponse;
 import vn.mystudy.exams.dto.SubmitAttemptRequest;
 import vn.mystudy.exams.entity.Exam;
 import vn.mystudy.exams.entity.ExamAnswerKey;
@@ -49,6 +56,9 @@ import vn.mystudy.study.StudyCatalog;
 class ExamServiceImpl implements ExamService {
 
     private static final List<String> SUBJECT_ORDER = List.of("math", "literature");
+    /** Thời gian ân hạn cho độ trễ mạng khi tự nộp lúc hết giờ. */
+    static final Duration SUBMIT_GRACE = Duration.ofSeconds(60);
+    private static final SecureRandom RANDOM = new SecureRandom();
 
     private final ExamRepository exams;
     private final ExamVersionRepository versions;
@@ -112,100 +122,94 @@ class ExamServiceImpl implements ExamService {
 
     @Override
     @Transactional
-    public AttemptDetailResponse submitAttempt(UUID examId, SubmitAttemptRequest request, UUID profileId) {
+    public StartAttemptResponse startAttempt(UUID examId, UUID profileId) {
         Exam exam = exams.findById(examId).orElseThrow(ExamServiceImpl::notFound);
         ExamVersion version = latestPublished(examId);
-        UUID versionId = version.getId();
+        int total = questions.findByIdVersionIdOrderByIdQuestionNumber(version.getId()).size();
+        if (total == 0) throw notFound();
 
-        List<ExamQuestion> qList = questions.findByIdVersionIdOrderByIdQuestionNumber(versionId);
-        if (qList.isEmpty()) throw notFound();
-
-        Map<Integer, Integer> keys = answerKeys.findByIdVersionId(versionId).stream()
-                .collect(Collectors.toMap(k -> k.getId().questionNumber(), ExamAnswerKey::getCorrectOptionNumber));
-        Map<Integer, List<OptionResponse>> optionsByQuestion = options
-                .findByIdVersionIdOrderByIdQuestionNumberAscIdOptionNumberAsc(versionId).stream()
-                .collect(Collectors.groupingBy(o -> o.getId().questionNumber(),
-                        Collectors.mapping(ExamServiceImpl::toOption, Collectors.toList())));
-
-        Map<Integer, Integer> answers = request.answers() != null ? request.answers() : Map.of();
-        int total = qList.size();
-        int correct = 0;
-        int incorrect = 0;
-        int blank = 0;
-
-        List<QuestionReviewResponse> reviews = new ArrayList<>();
-        for (ExamQuestion q : qList) {
-            int qNum = q.getId().questionNumber();
-            int correctOpt = keys.getOrDefault(qNum, 1);
-            Integer userOpt = answers.get(qNum);
-            boolean isCorrect = userOpt != null && userOpt == correctOpt;
-            if (userOpt == null) {
-                blank++;
-            } else if (isCorrect) {
-                correct++;
-            } else {
-                incorrect++;
-            }
-            reviews.add(new QuestionReviewResponse(
-                    qNum,
-                    q.getPrompt(),
-                    optionsByQuestion.getOrDefault(qNum, List.of()),
-                    correctOpt,
-                    userOpt,
-                    isCorrect,
-                    q.getExplanation()
-            ));
-        }
-
-        BigDecimal score = BigDecimal.valueOf((correct * 10.0) / total).setScale(2, RoundingMode.HALF_UP);
         Instant now = Instant.now();
-        int elapsed = Math.max(0, request.elapsedSeconds());
-        Instant startedAt = now.minusSeconds(elapsed);
-        UUID attemptId = UUID.randomUUID();
-
-        ExamAttempt attempt = new ExamAttempt(
-                attemptId, versionId, profileId, startedAt, null,
-                total, now, "manual", correct, incorrect, blank, elapsed, score
-        );
-        attempts.save(attempt);
-
-        for (Map.Entry<Integer, Integer> entry : answers.entrySet()) {
-            if (entry.getValue() != null) {
-                attemptAnswers.save(new ExamAttemptAnswer(
-                        attemptId, versionId, entry.getKey(), entry.getValue()
-                ));
-            }
+        Instant expiresAt = now.plus(Duration.ofMinutes(exam.getDurationMinutes()));
+        String token = null;
+        byte[] tokenHash = null;
+        if (profileId == null) {
+            // Khách: cấp token ngẫu nhiên, chỉ lưu hash để không ai đọc CSDL mà mạo danh được lượt thi.
+            byte[] raw = new byte[32];
+            RANDOM.nextBytes(raw);
+            token = Base64.getUrlEncoder().withoutPadding().encodeToString(raw);
+            tokenHash = sha256(token);
         }
+        ExamAttempt attempt = attempts.save(
+                ExamAttempt.start(UUID.randomUUID(), version.getId(), profileId, tokenHash, now, expiresAt, total));
+        return new StartAttemptResponse(attempt.getId(), now, expiresAt, now, token);
+    }
 
-        return new AttemptDetailResponse(
-                attemptId, examId, score, correct, incorrect, blank,
-                total, elapsed, now, answers, reviews
-        );
+    @Override
+    @Transactional
+    public AttemptDetailResponse submitAttempt(UUID examId, UUID attemptId, SubmitAttemptRequest request,
+            UUID profileId, String attemptToken) {
+        ExamAttempt attempt = attempts.lockById(attemptId)
+                .orElseThrow(() -> BusinessException.notFound("Không tìm thấy lượt thi."));
+        authorize(attempt, profileId, attemptToken);
+        ExamVersion version = versions.findById(attempt.getVersionId()).orElseThrow(ExamServiceImpl::notFound);
+        if (!version.getExamId().equals(examId)) throw notFound();
+        // Gửi lại (mạng chập chờn, bấm hai lần) thì trả kết quả đã chốt.
+        if (attempt.getSubmittedAt() != null) return toDetailResponse(examId, attempt);
+
+        Instant now = Instant.now();
+        Instant expiresAt = attempt.getExpiresAt();
+        boolean late = expiresAt != null && now.isAfter(expiresAt);
+        boolean tooLate = expiresAt != null && now.isAfter(expiresAt.plus(SUBMIT_GRACE));
+        // Quá hạn cộng thời gian ân hạn thì không nhận đáp án (tránh kéo dài giờ làm bằng cách giữ request).
+        Map<Integer, Integer> submitted = tooLate || request == null || request.answers() == null
+                ? Map.of() : request.answers();
+
+        VersionContent content = load(attempt.getVersionId());
+        Map<Integer, Integer> accepted = new HashMap<>();
+        submitted.forEach((number, option) -> {
+            if (number != null && option != null
+                    && content.optionsByQuestion().getOrDefault(number, List.of()).stream()
+                            .anyMatch(o -> o.number() == option)) {
+                accepted.put(number, option);
+            }
+        });
+        Grade grade = grade(content, accepted);
+
+        Instant endedAt = late ? expiresAt : now;
+        int elapsed = (int) Math.max(1, Duration.between(attempt.getStartedAt(), endedAt).toSeconds());
+        attempt.submit(now, late ? "time_expired" : "manual", grade.correct(), grade.incorrect(), grade.blank(),
+                elapsed, grade.score());
+        accepted.forEach((number, option) ->
+                attemptAnswers.save(new ExamAttemptAnswer(attempt.getId(), attempt.getVersionId(), number, option)));
+        return toDetailResponse(examId, attempt, accepted, grade);
     }
 
     @Override
     public Optional<AttemptDetailResponse> getLatestAttempt(UUID examId, UUID profileId) {
         if (profileId == null) return Optional.empty();
         ExamVersion version = latestPublished(examId);
-        return attempts.findFirstByProfileIdAndVersionIdOrderBySubmittedAtDesc(profileId, version.getId())
-                .map(attempt -> toDetailResponse(examId, version.getId(), attempt));
+        return attempts.findFirstByProfileIdAndVersionIdAndSubmittedAtIsNotNullOrderBySubmittedAtDesc(
+                        profileId, version.getId())
+                .map(attempt -> toDetailResponse(examId, attempt));
     }
 
     @Override
-    public AttemptDetailResponse getAttempt(UUID examId, UUID attemptId, UUID profileId) {
+    public AttemptDetailResponse getAttempt(UUID examId, UUID attemptId, UUID profileId, String attemptToken) {
         ExamAttempt attempt = attempts.findById(attemptId)
                 .orElseThrow(() -> BusinessException.notFound("Không tìm thấy kết quả bài thi."));
-        if (attempt.getProfileId() != null && profileId != null && !attempt.getProfileId().equals(profileId)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "Bạn không có quyền xem kết quả này.");
+        authorize(attempt, profileId, attemptToken);
+        if (attempt.getSubmittedAt() == null) {
+            throw BusinessException.notFound("Lượt thi này chưa được nộp.");
         }
-        return toDetailResponse(examId, attempt.getVersionId(), attempt);
+        return toDetailResponse(examId, attempt);
     }
 
     @Override
     public List<AttemptSummaryResponse> listAttempts(UUID examId, UUID profileId) {
         if (profileId == null) return List.of();
         ExamVersion version = latestPublished(examId);
-        return attempts.findByProfileIdAndVersionIdOrderBySubmittedAtDesc(profileId, version.getId()).stream()
+        return attempts.findByProfileIdAndVersionIdAndSubmittedAtIsNotNullOrderBySubmittedAtDesc(
+                        profileId, version.getId()).stream()
                 .map(a -> new AttemptSummaryResponse(
                         a.getId(), examId, a.getScore(),
                         a.getCorrectCount() != null ? a.getCorrectCount() : 0,
@@ -218,7 +222,48 @@ class ExamServiceImpl implements ExamService {
                 .toList();
     }
 
-    private AttemptDetailResponse toDetailResponse(UUID examId, UUID versionId, ExamAttempt attempt) {
+    /** Chủ lượt thi: tài khoản sở hữu, hoặc khách cầm đúng token đã cấp khi bắt đầu. */
+    private static void authorize(ExamAttempt attempt, UUID profileId, String attemptToken) {
+        boolean allowed;
+        if (attempt.getProfileId() != null) {
+            allowed = attempt.getProfileId().equals(profileId);
+        } else {
+            allowed = attemptToken != null && attempt.getGuestTokenHash() != null
+                    && MessageDigest.isEqual(attempt.getGuestTokenHash(), sha256(attemptToken));
+        }
+        if (!allowed) throw new BusinessException(ErrorCode.FORBIDDEN, "Bạn không có quyền với lượt thi này.");
+    }
+
+    private AttemptDetailResponse toDetailResponse(UUID examId, ExamAttempt attempt) {
+        VersionContent content = load(attempt.getVersionId());
+        Map<Integer, Integer> answers = attemptAnswers.findByIdAttemptIdOrderByIdQuestionNumberAsc(attempt.getId())
+                .stream().collect(Collectors.toMap(a -> a.getId().questionNumber(), ExamAttemptAnswer::getOptionNumber));
+        return toDetailResponse(examId, attempt, answers, grade(content, answers));
+    }
+
+    private static AttemptDetailResponse toDetailResponse(UUID examId, ExamAttempt attempt,
+            Map<Integer, Integer> answers, Grade grade) {
+        return new AttemptDetailResponse(
+                attempt.getId(),
+                examId,
+                attempt.getScore() != null ? attempt.getScore() : grade.score(),
+                attempt.getCorrectCount() != null ? attempt.getCorrectCount() : grade.correct(),
+                attempt.getIncorrectCount() != null ? attempt.getIncorrectCount() : grade.incorrect(),
+                attempt.getBlankCount() != null ? attempt.getBlankCount() : grade.blank(),
+                attempt.getQuestionCount(),
+                attempt.getElapsedSeconds() != null ? attempt.getElapsedSeconds() : 0,
+                attempt.getSubmittedAt(),
+                answers,
+                grade.reviews());
+    }
+
+    /** Câu hỏi, lựa chọn và khóa đáp án của một phiên bản đề. */
+    private record VersionContent(List<ExamQuestion> questions, Map<Integer, Integer> keys,
+            Map<Integer, List<OptionResponse>> optionsByQuestion) {}
+
+    private record Grade(int correct, int incorrect, int blank, BigDecimal score, List<QuestionReviewResponse> reviews) {}
+
+    private VersionContent load(UUID versionId) {
         List<ExamQuestion> qList = questions.findByIdVersionIdOrderByIdQuestionNumber(versionId);
         Map<Integer, Integer> keys = answerKeys.findByIdVersionId(versionId).stream()
                 .collect(Collectors.toMap(k -> k.getId().questionNumber(), ExamAnswerKey::getCorrectOptionNumber));
@@ -226,38 +271,42 @@ class ExamServiceImpl implements ExamService {
                 .findByIdVersionIdOrderByIdQuestionNumberAscIdOptionNumberAsc(versionId).stream()
                 .collect(Collectors.groupingBy(o -> o.getId().questionNumber(),
                         Collectors.mapping(ExamServiceImpl::toOption, Collectors.toList())));
-        Map<Integer, Integer> answers = attemptAnswers.findByIdAttemptIdOrderByIdQuestionNumberAsc(attempt.getId()).stream()
-                .collect(Collectors.toMap(a -> a.getId().questionNumber(), ExamAttemptAnswer::getOptionNumber));
+        return new VersionContent(qList, keys, optionsByQuestion);
+    }
 
-        List<QuestionReviewResponse> reviews = qList.stream().map(q -> {
+    private static Grade grade(VersionContent content, Map<Integer, Integer> answers) {
+        int correct = 0;
+        int incorrect = 0;
+        int blank = 0;
+        List<QuestionReviewResponse> reviews = new ArrayList<>();
+        for (ExamQuestion q : content.questions()) {
             int qNum = q.getId().questionNumber();
-            int correctOpt = keys.getOrDefault(qNum, 1);
+            Integer key = content.keys().get(qNum);
+            if (key == null) {
+                // Không mặc định đáp án A: thiếu khóa là lỗi dữ liệu, cần báo để quản trị sửa.
+                throw new IllegalStateException("Missing answer key for question " + qNum);
+            }
             Integer userOpt = answers.get(qNum);
-            boolean isCorrect = userOpt != null && userOpt == correctOpt;
-            return new QuestionReviewResponse(
-                    qNum,
-                    q.getPrompt(),
-                    optionsByQuestion.getOrDefault(qNum, List.of()),
-                    correctOpt,
-                    userOpt,
-                    isCorrect,
-                    q.getExplanation()
-            );
-        }).toList();
+            boolean isCorrect = userOpt != null && userOpt.intValue() == key;
+            if (userOpt == null) blank++;
+            else if (isCorrect) correct++;
+            else incorrect++;
+            reviews.add(new QuestionReviewResponse(qNum, q.getPrompt(),
+                    content.optionsByQuestion().getOrDefault(qNum, List.of()), key, userOpt, isCorrect,
+                    q.getExplanation(), q.getTopicId()));
+        }
+        int total = content.questions().size();
+        BigDecimal score = total == 0 ? BigDecimal.ZERO
+                : BigDecimal.valueOf(correct * 10.0 / total).setScale(2, RoundingMode.HALF_UP);
+        return new Grade(correct, incorrect, blank, score, reviews);
+    }
 
-        return new AttemptDetailResponse(
-                attempt.getId(),
-                examId,
-                attempt.getScore(),
-                attempt.getCorrectCount() != null ? attempt.getCorrectCount() : 0,
-                attempt.getIncorrectCount() != null ? attempt.getIncorrectCount() : 0,
-                attempt.getBlankCount() != null ? attempt.getBlankCount() : 0,
-                attempt.getQuestionCount(),
-                attempt.getElapsedSeconds() != null ? attempt.getElapsedSeconds() : 0,
-                attempt.getSubmittedAt(),
-                answers,
-                reviews
-        );
+    private static byte[] sha256(String value) {
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     private ExamVersion latestPublished(UUID examId) {

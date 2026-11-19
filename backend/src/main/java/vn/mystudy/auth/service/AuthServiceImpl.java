@@ -5,7 +5,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -128,7 +127,9 @@ class AuthServiceImpl implements AuthService {
         if (profile == null) {
             if (email != null && !email.isBlank()) {
                 Profile existingByEmail = profiles.findFirstByEmailIgnoreCase(email).orElse(null);
-                if (existingByEmail != null) {
+                // Không gộp vào hồ sơ có mật khẩu: email đăng ký chưa được xác minh, người lạ có thể đã
+                // đăng ký trước bằng email này để chờ chủ email đăng nhập Google rồi dùng chung tài khoản.
+                if (existingByEmail != null && existingByEmail.getPasswordHash() == null) {
                     existingByEmail.linkGoogle(subject, email, displayName);
                     return existingByEmail.getId();
                 }

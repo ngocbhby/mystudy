@@ -123,7 +123,7 @@ class AdminExamServiceImpl implements AdminExamService {
                 throw new BusinessException(ErrorCode.BAD_REQUEST, "Nội dung câu " + qNum + " không được để trống.");
             }
             String explanation = q.explanation() != null && !q.explanation().isBlank() ? q.explanation().trim() : null;
-            questions.save(new ExamQuestion(new QuestionId(versionId, qNum), q.prompt().trim(), explanation));
+            questions.save(new ExamQuestion(new QuestionId(versionId, qNum), q.prompt().trim(), explanation, q.topicId()));
 
             List<String> opts = q.options();
             if (opts == null || opts.size() < 2) {
@@ -168,14 +168,20 @@ class AdminExamServiceImpl implements AdminExamService {
         }
         try {
             byte[] bytes = file.getBytes();
-            String contentType = file.getContentType() != null && !file.getContentType().isBlank()
-                    ? file.getContentType()
-                    : "application/pdf";
-            UploadedDocument doc = new UploadedDocument(originalName, contentType, bytes.length, bytes);
+            // Kiểm tra chữ ký thật của file thay vì tin đuôi .pdf hay Content-Type do trình duyệt gửi.
+            if (!isPdf(bytes)) {
+                throw new BusinessException(ErrorCode.BAD_REQUEST, "File tải lên không phải PDF hợp lệ.");
+            }
+            UploadedDocument doc = new UploadedDocument(originalName, "application/pdf", bytes.length, bytes);
             doc = uploadedDocuments.saveAndFlush(doc);
             return "/api/documents/" + doc.getId();
         } catch (IOException e) {
             throw new BusinessException(ErrorCode.INTERNAL_ERROR, "Không thể lưu file tải lên: " + e.getMessage());
         }
+    }
+
+    static boolean isPdf(byte[] bytes) {
+        return bytes != null && bytes.length >= 5 && bytes[0] == '%' && bytes[1] == 'P' && bytes[2] == 'D'
+                && bytes[3] == 'F' && bytes[4] == '-';
     }
 }

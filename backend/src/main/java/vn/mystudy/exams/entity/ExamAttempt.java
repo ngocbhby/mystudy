@@ -21,6 +21,9 @@ public class ExamAttempt {
     @Column(name = "profile_id")
     private UUID profileId;
 
+    @Column(name = "guest_token_hash")
+    private byte[] guestTokenHash;
+
     @Column(name = "started_at", nullable = false)
     private Instant startedAt;
 
@@ -70,6 +73,29 @@ public class ExamAttempt {
         this.blankCount = blankCount;
         this.elapsedSeconds = elapsedSeconds;
         this.score = score;
+    }
+
+    public static ExamAttempt start(UUID id, UUID versionId, UUID profileId, byte[] guestTokenHash,
+            Instant startedAt, Instant expiresAt, int questionCount) {
+        ExamAttempt attempt = new ExamAttempt(id, versionId, profileId, startedAt, expiresAt, questionCount,
+                null, null, null, null, null, null, null);
+        attempt.guestTokenHash = guestTokenHash;
+        return attempt;
+    }
+
+    public void submit(Instant submittedAt, String reason, int correct, int incorrect, int blank, int elapsedSeconds,
+            BigDecimal score) {
+        this.submittedAt = submittedAt;
+        this.submissionReason = reason;
+        this.correctCount = correct;
+        this.incorrectCount = incorrect;
+        this.blankCount = blank;
+        this.elapsedSeconds = elapsedSeconds;
+        this.score = score;
+    }
+
+    public byte[] getGuestTokenHash() {
+        return guestTokenHash;
     }
 
     public UUID getId() {

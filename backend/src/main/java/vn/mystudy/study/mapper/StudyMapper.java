@@ -26,7 +26,11 @@ public class StudyMapper {
                 .toList();
         Map<String, Double> scores = goal.getSubjects().stream()
                 .collect(Collectors.toMap(GoalSubject::subjectCode, s -> s.targetScore().doubleValue()));
-        return new GoalResponse(goal.getPurpose(), electives, scores, goal.getMonths(), goal.getDailyMinutes(),
+        Map<String, Double> currentScores = goal.getSubjects().stream()
+                .filter(s -> s.currentScore() != null)
+                .collect(Collectors.toMap(GoalSubject::subjectCode, s -> s.currentScore().doubleValue()));
+        return new GoalResponse(goal.getPurpose(), electives, scores, currentScores, goal.getMonths(),
+                goal.getDailyMinutes(),
                 goal.getDays().stream().sorted().toList());
     }
 
@@ -35,7 +39,7 @@ public class StudyMapper {
     }
 
     public TaskResponse toResponse(StudyTask task) {
-        return new TaskResponse(task.getId(), task.getSubjectCode(), task.getTopic().getName(),
+        return new TaskResponse(task.getId(), task.getSubjectCode(), task.getTopic().getId(), task.getTopic().getName(),
                 task.getScheduledOn().toString(), task.getPlannedMinutes(), task.getLearningContent(),
                 task.isCompleted());
     }

@@ -22,6 +22,8 @@ import {
   Typography,
 } from '@mui/material'
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from 'react'
+import { AiExplainBox } from '@/features/ai/components/AiExplainBox'
+import { MathText } from '@/shared/components/MathText'
 import { Link as RouterLink, useNavigate } from 'react-router'
 import { paths } from '@/app/router/paths'
 import { colors } from '@/app/theme/theme'
@@ -32,6 +34,7 @@ import { Notice } from '@/shared/components/Notice'
 import { examApi } from '../api/exam-api'
 import { useExamList, useLatestAttempt } from '../hooks/useExams'
 import { optionLabel } from '../model/exam-utils'
+import { latestKey, practiceKey, type StorageOwner } from '../model/practice-storage'
 import type { AttemptDetail, ExamQuestion, ExamSummary } from '../model/types'
 
 type Phase = 'before' | 'taking' | 'result'
@@ -529,8 +532,8 @@ function ExamResult({
             <Button variant="contained" onClick={onRetry}>
               Làm lại đề
             </Button>
-            <Button component={RouterLink} to={paths.examAnswers(exam.id)} variant="outlined" sx={lightOutline}>
-              Xem đáp án gốc
+            <Button component={RouterLink} to={paths.analysis} variant="outlined" sx={lightOutline}>
+              Phân tích điểm yếu
             </Button>
           </Stack>
         </Card>
@@ -789,19 +792,16 @@ function ExamResult({
                       Cách giải chi tiết:
                     </Typography>
                   </Box>
-                  <Typography
-                    sx={{
-                      color: 'text.primary',
-                      fontSize: '0.92rem',
-                      lineHeight: 1.6,
-                      whiteSpace: 'pre-line',
-                    }}
-                  >
-                    {q.explanation
-                      ? q.explanation
-                      : `Đáp án chính xác là ${optionLabel(q.correctOption)}. Nắm vững kiến thức lý thuyết và các công thức cơ bản để vận dụng giải bài tập này.`}
-                  </Typography>
+                  <MathText
+                    sx={{ color: 'text.primary', fontSize: '0.92rem', whiteSpace: 'pre-line' }}
+                    text={
+                      q.explanation
+                        ? q.explanation
+                        : `Đáp án chính xác là ${optionLabel(q.correctOption)}. Nắm vững kiến thức lý thuyết và các công thức cơ bản để vận dụng giải bài tập này.`
+                    }
+                  />
                 </Box>
+                {isUserWrong && <AiExplainBox examId={exam.id} attemptId={result.id} questionNumber={q.number} />}
               </Box>
             )
           })}
@@ -811,16 +811,20 @@ function ExamResult({
   )
 }
 
-function loadSavedPractice(examId: string): {
+interface SavedPractice {
+  attemptId: string
+  attemptToken: string | null
   deadline: number
   startedAt: number
   answers: Record<number, number>
-} | null {
+}
+
+function loadSavedPractice(key: string): SavedPractice | null {
   try {
-    const raw = sessionStorage.getItem(`mystudy_practice_${examId}`)
+    const raw = sessionStorage.getItem(key)
     if (!raw) return null
     const data = JSON.parse(raw)
-    if (data && typeof data.deadline === 'number' && data.deadline > Date.now()) {
+    if (data && typeof data.attemptId === 'string' && typeof data.deadline === 'number' && data.deadline > Date.now()) {
       return data
     }
   } catch {
@@ -829,9 +833,9 @@ function loadSavedPractice(examId: string): {
   return null
 }
 
-function loadSavedLatestAttempt(examId: string): AttemptDetail | null {
+function loadSavedLatestAttempt(key: string): AttemptDetail | null {
   try {
-    const raw = localStorage.getItem(`mystudy_latest_attempt_${examId}`)
+    const raw = localStorage.getItem(key)
     if (!raw) return null
     return JSON.parse(raw) as AttemptDetail
   } catch {
@@ -840,13 +844,28 @@ function loadSavedLatestAttempt(examId: string): AttemptDetail | null {
 }
 
 /** Luyện tập có bấm giờ và chấm ngay trong tab; tự động lưu nháp vào sessionStorage tránh mất bài khi tải lại trang. */
-export function PracticeSheet({ exam, questions }: { exam: ExamSummary; questions: ExamQuestion[] }) {
+export function PracticeSheet({
+  exam,
+  questions,
+  owner,
+}: {
+  exam: ExamSummary
+  questions: ExamQuestion[]
+  /** Người đang dùng (id tài khoản hoặc "guest"): bài làm và kết quả lưu trên trình duyệt tách theo người này. */
+  owner: StorageOwner
+}) {
+  const savedKey = practiceKey(owner, exam.id)
+  const resultKey = latestKey(owner, exam.id)
   const latestQuery = useLatestAttempt(exam.id)
-  const [localAttempt, setLocalAttempt] = useState<AttemptDetail | null>(() => loadSavedLatestAttempt(exam.id))
-  const [saved] = useState(() => loadSavedPractice(exam.id))
+  const [localAttempt, setLocalAttempt] = useState<AttemptDetail | null>(() => loadSavedLatestAttempt(resultKey))
+  const [saved] = useState(() => loadSavedPractice(savedKey))
   const [phase, setPhase] = useState<Phase>(() => (saved ? 'taking' : 'before'))
   const [deadline, setDeadline] = useState(() => (saved ? saved.deadline : 0))
   const [startedAt, setStartedAt] = useState(() => (saved ? saved.startedAt : 0))
+  const [attemptId, setAttemptId] = useState<string | null>(() => (saved ? saved.attemptId : null))
+  const [attemptToken, setAttemptToken] = useState<string | null>(() => (saved ? saved.attemptToken : null))
+  const [starting, setStarting] = useState(false)
+  const [startError, setStartError] = useState('')
   const [now, setNow] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>(() => (saved ? saved.answers : {}))
   const [result, setResult] = useState<AttemptDetail | null>(null)
@@ -859,51 +878,45 @@ export function PracticeSheet({ exam, questions }: { exam: ExamSummary; question
   useEffect(() => {
     if (latestQuery.data) {
       try {
-        localStorage.setItem(`mystudy_latest_attempt_${exam.id}`, JSON.stringify(latestQuery.data))
+        localStorage.setItem(resultKey, JSON.stringify(latestQuery.data))
       } catch {
         // ignore
       }
     }
-  }, [latestQuery.data, exam.id])
+  }, [latestQuery.data, resultKey])
 
   useEffect(() => {
-    if (phase === 'taking' && deadline > 0) {
+    if (phase === 'taking' && deadline > 0 && attemptId) {
       try {
         sessionStorage.setItem(
-          `mystudy_practice_${exam.id}`,
-          JSON.stringify({ deadline, startedAt, answers }),
+          savedKey,
+          JSON.stringify({ attemptId, attemptToken, deadline, startedAt, answers } satisfies SavedPractice),
         )
       } catch {
         // ignore
       }
     } else if (phase === 'result' || phase === 'before') {
       try {
-        sessionStorage.removeItem(`mystudy_practice_${exam.id}`)
+        sessionStorage.removeItem(savedKey)
       } catch {
         // ignore
       }
     }
-  }, [phase, exam.id, deadline, startedAt, answers])
+  }, [phase, savedKey, attemptId, attemptToken, deadline, startedAt, answers])
 
   const remaining = phase === 'taking' ? Math.max(0, Math.ceil((deadline - now) / 1000)) : 0
   const blankCount = questions.length - Object.keys(answers).length
 
   async function grade() {
-    if (lock.current || phase === 'result') return
+    if (lock.current || phase === 'result' || !attemptId) return
     lock.current = true
     setGrading(true)
     setGradeError('')
     try {
-      const elapsedSeconds = Math.min(
-        exam.durationMinutes * 60,
-        Math.max(1, Math.round((Date.now() - startedAt) / 1000)),
-      )
-      const res = await examApi.submitAttempt(exam.id, {
-        elapsedSeconds,
-        answers,
-      })
+      // Máy chủ tự tính thời gian làm bài theo thời điểm bắt đầu và hạn nộp đã lưu.
+      const res = await examApi.submitAttempt(exam.id, attemptId, { answers }, attemptToken)
       try {
-        localStorage.setItem(`mystudy_latest_attempt_${exam.id}`, JSON.stringify(res))
+        localStorage.setItem(resultKey, JSON.stringify(res))
       } catch {
         // ignore
       }
@@ -931,15 +944,29 @@ export function PracticeSheet({ exam, questions }: { exam: ExamSummary; question
     return () => clearInterval(timer)
   }, [phase])
 
-  function start() {
-    const t = Date.now()
-    setStartedAt(t)
-    setNow(t)
-    setDeadline(t + exam.durationMinutes * 60_000)
-    setAnswers({})
-    setResult(null)
-    setGradeError('')
-    setPhase('taking')
+  async function start() {
+    if (starting) return
+    setStarting(true)
+    setStartError('')
+    try {
+      const attempt = await examApi.startAttempt(exam.id)
+      // Đồng hồ đếm theo hạn nộp của máy chủ; bù chênh lệch giữa giờ máy chủ và giờ máy học sinh.
+      const t = Date.now()
+      const offset = Date.parse(attempt.serverTime) - t
+      setAttemptId(attempt.attemptId)
+      setAttemptToken(attempt.attemptToken)
+      setStartedAt(Date.parse(attempt.startedAt) - offset)
+      setNow(t)
+      setDeadline(Date.parse(attempt.expiresAt) - offset)
+      setAnswers({})
+      setResult(null)
+      setGradeError('')
+      setPhase('taking')
+    } catch {
+      setStartError('Không thể bắt đầu bài thi. Kiểm tra kết nối mạng rồi thử lại.')
+    } finally {
+      setStarting(false)
+    }
   }
 
   function handleReviewLatest(attempt: AttemptDetail) {
@@ -964,9 +991,14 @@ export function PracticeSheet({ exam, questions }: { exam: ExamSummary; question
         <BeforeExam
           exam={exam}
           latestAttempt={effectiveLatest}
-          onStart={start}
+          onStart={() => void start()}
           onReviewLatest={handleReviewLatest}
         />
+      )}
+      {phase === 'before' && (starting || startError) && (
+        <Typography role={startError ? 'alert' : 'status'} color={startError ? 'error' : 'text.secondary'}>
+          {startError || 'Đang mở phòng thi…'}
+        </Typography>
       )}
 
       {phase === 'taking' && (

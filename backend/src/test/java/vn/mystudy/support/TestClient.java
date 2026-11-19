@@ -31,6 +31,21 @@ public final class TestClient {
         return send(request);
     }
 
+    /** POST kèm một header tùy chọn (ví dụ token lượt thi của khách). */
+    public ResultActions post(String url, String json, String header, String value) throws Exception {
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post(url).contentType(MediaType.APPLICATION_JSON).content(json);
+        Cookie xsrf = jar.get("XSRF-TOKEN");
+        if (xsrf != null) request.header("X-XSRF-TOKEN", xsrf.getValue());
+        if (value != null) request.header(header, value);
+        return send(request);
+    }
+
+    public ResultActions get(String url, String header, String value) throws Exception {
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(url);
+        if (value != null) request.header(header, value);
+        return send(request);
+    }
+
     public ResultActions delete(String url) throws Exception {
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders.delete(url);
         Cookie xsrf = jar.get("XSRF-TOKEN");
