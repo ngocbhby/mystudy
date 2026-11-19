@@ -12,6 +12,8 @@ public interface AdminExamService {
 
     ExamSummaryResponse createExam(CreateExamRequest request);
 
+    ExamSummaryResponse updateExam(UUID examId, vn.mystudy.exams.dto.UpdateExamRequest request);
+
     void deleteExam(UUID examId);
 
     String uploadPdf(MultipartFile file);

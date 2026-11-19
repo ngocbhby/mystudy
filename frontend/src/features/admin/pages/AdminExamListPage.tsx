@@ -1,8 +1,9 @@
 import AddIcon from '@mui/icons-material/Add'
 import DeleteIcon from '@mui/icons-material/Delete'
+import EditIcon from '@mui/icons-material/Edit'
 import OpenInNewIcon from '@mui/icons-material/OpenInNew'
-import QuizIcon from '@mui/icons-material/Quiz'
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf'
+import QuizIcon from '@mui/icons-material/Quiz'
 import {
   Box,
   Button,
@@ -17,6 +18,7 @@ import {
   MenuItem,
   Select,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material'
 import { useState } from 'react'
@@ -28,16 +30,29 @@ import { ErrorNotice } from '@/shared/components/ErrorNotice'
 import { LoadingState } from '@/shared/components/LoadingState'
 import { PageHeader } from '@/shared/components/PageHeader'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
-import { useAdminExams, useDeleteExam } from '../hooks/useAdmin'
+import { useAdminExams, useDeleteExam, useUpdateExam } from '../hooks/useAdmin'
+import type { AdminExamSummary } from '../types'
 
 export default function AdminExamListPage() {
   useDocumentTitle('Quản trị đề thi · MyStudy')
   const { data: exams, isLoading, isError, error, refetch } = useAdminExams()
   const deleteMutation = useDeleteExam()
+  const updateMutation = useUpdateExam()
 
   const [selectedSubject, setSelectedSubject] = useState('')
   const [selectedKind, setSelectedKind] = useState('')
   const [examToDelete, setExamToDelete] = useState<{ id: string; title: string } | null>(null)
+
+  // State chỉnh sửa đề thi
+  const [examToEdit, setExamToEdit] = useState<AdminExamSummary | null>(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editSubject, setEditSubject] = useState('')
+  const [editYear, setEditYear] = useState<number>(new Date().getFullYear())
+  const [editDuration, setEditDuration] = useState<number>(90)
+  const [editSource, setEditSource] = useState('')
+  const [editPaperUrl, setEditPaperUrl] = useState('')
+  const [editAnswerUrl, setEditAnswerUrl] = useState('')
+  const [editError, setEditError] = useState('')
 
   if (isLoading) return <LoadingState label="Đang tải danh sách đề thi…" />
   if (isError) return <ErrorNotice error={error} onRetry={() => void refetch()} />
@@ -58,6 +73,54 @@ export default function AdminExamListPage() {
     deleteMutation.mutate(examToDelete.id, {
       onSettled: () => setExamToDelete(null),
     })
+  }
+
+  const handleOpenEdit = (exam: AdminExamSummary) => {
+    setExamToEdit(exam)
+    setEditTitle(exam.title)
+    setEditSubject(exam.subjectCode)
+    setEditYear(exam.year ?? new Date().getFullYear())
+    setEditDuration(exam.durationMinutes)
+    setEditSource(exam.source ?? '')
+    setEditPaperUrl(exam.paperUrl ?? '')
+    setEditAnswerUrl(exam.answerUrl ?? '')
+    setEditError('')
+  }
+
+  const handleUpdateSubmit = () => {
+    if (!examToEdit) return
+    if (!editTitle.trim()) {
+      setEditError('Tiêu đề đề thi không được để trống.')
+      return
+    }
+    if (editDuration <= 0) {
+      setEditError('Thời gian làm bài phải lớn hơn 0.')
+      return
+    }
+
+    setEditError('')
+    updateMutation.mutate(
+      {
+        id: examToEdit.id,
+        payload: {
+          title: editTitle.trim(),
+          subjectCode: editSubject,
+          examYear: editYear,
+          durationMinutes: editDuration,
+          sourceName: editSource.trim(),
+          paperUrl: editPaperUrl.trim() || undefined,
+          answerGuideUrl: editAnswerUrl.trim() || undefined,
+        },
+      },
+      {
+        onSuccess: () => {
+          setExamToEdit(null)
+        },
+        onError: (err) => {
+          setEditError(err instanceof Error ? err.message : 'Không thể lưu thay đổi. Vui lòng thử lại.')
+        },
+      }
+    )
   }
 
   return (
@@ -137,32 +200,50 @@ export default function AdminExamListPage() {
           sx={{ minWidth: 160, borderRadius: 2 }}
           onChange={(e) => setSelectedKind(e.target.value)}
         >
-          <MenuItem value="">Tất cả loại đề</MenuItem>
+          <MenuItem value="">Tất cả hình thức</MenuItem>
           <MenuItem value="online">Trắc nghiệm online</MenuItem>
-          <MenuItem value="pdf">Đề thi PDF</MenuItem>
+          <MenuItem value="pdf">Đề PDF tải về</MenuItem>
         </Select>
 
-        <Typography variant="body2" color="text.secondary" sx={{ ml: 'auto' }}>
-          Hiển thị <strong>{filteredExams.length}</strong> đề thi
-        </Typography>
+        {(selectedSubject || selectedKind) && (
+          <Button
+            size="small"
+            color="inherit"
+            onClick={() => {
+              setSelectedSubject('')
+              setSelectedKind('')
+            }}
+          >
+            Xóa bộ lọc
+          </Button>
+        )}
       </Stack>
 
       {/* Danh sách đề thi */}
       {filteredExams.length === 0 ? (
         <Card sx={{ p: 5, textAlign: 'center', borderRadius: 3 }}>
-          <Typography color="text.secondary">Chưa có đề thi nào phù hợp với bộ lọc.</Typography>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>
+            Chưa có đề thi nào phù hợp
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+            Hãy thử đổi bộ lọc hoặc thêm đề thi mới.
+          </Typography>
         </Card>
       ) : (
         <Stack spacing={1.5}>
           {filteredExams.map((exam) => {
             const isOnline = exam.questionCount > 0
-            const previewLink = isOnline ? paths.examPaper(exam.id) : exam.paperUrl
+            const previewLink = isOnline
+              ? `/thi-thu/${exam.id}`
+              : exam.paperUrl?.startsWith('/api/documents/')
+                ? exam.paperUrl
+                : null
 
             return (
               <Card
                 key={exam.id}
                 sx={{
-                  p: 2.5,
+                  p: 2,
                   borderRadius: 3,
                   display: 'flex',
                   alignItems: 'center',
@@ -234,6 +315,21 @@ export default function AdminExamListPage() {
 
                   <IconButton
                     size="small"
+                    color="primary"
+                    title="Chỉnh sửa đề thi"
+                    onClick={() => handleOpenEdit(exam)}
+                    sx={{
+                      borderRadius: 2,
+                      p: 1,
+                      border: '1px solid',
+                      borderColor: 'rgba(109, 77, 214, 0.25)',
+                    }}
+                  >
+                    <EditIcon fontSize="small" />
+                  </IconButton>
+
+                  <IconButton
+                    size="small"
                     color="error"
                     title="Xóa đề thi"
                     disabled={deleteMutation.isPending}
@@ -253,6 +349,113 @@ export default function AdminExamListPage() {
           })}
         </Stack>
       )}
+
+      {/* Dialog chỉnh sửa đề thi */}
+      <Dialog
+        open={Boolean(examToEdit)}
+        onClose={() => setExamToEdit(null)}
+        maxWidth="sm"
+        fullWidth
+        slotProps={{ paper: { sx: { borderRadius: 3, p: 1 } } }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Chỉnh sửa thông tin đề thi</DialogTitle>
+        <DialogContent>
+          <Stack spacing={2.5} sx={{ mt: 1 }}>
+            {editError && (
+              <Typography color="error" variant="body2" sx={{ fontWeight: 500 }}>
+                {editError}
+              </Typography>
+            )}
+
+            <TextField
+              label="Tên / Tiêu đề đề thi"
+              fullWidth
+              size="small"
+              required
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              placeholder="Ví dụ: Đề thi thử THPT Quốc gia 2026 môn Toán"
+            />
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <Select
+                size="small"
+                fullWidth
+                value={editSubject}
+                onChange={(e) => setEditSubject(e.target.value)}
+              >
+                {Object.entries(subjects).map(([code, name]) => (
+                  <MenuItem key={code} value={code}>
+                    {name}
+                  </MenuItem>
+                ))}
+              </Select>
+
+              <TextField
+                label="Năm thi"
+                type="number"
+                size="small"
+                fullWidth
+                value={editYear}
+                onChange={(e) => setEditYear(Number(e.target.value))}
+              />
+            </Stack>
+
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <TextField
+                label="Thời gian làm bài (phút)"
+                type="number"
+                size="small"
+                fullWidth
+                required
+                value={editDuration}
+                onChange={(e) => setEditDuration(Number(e.target.value))}
+              />
+
+              <TextField
+                label="Đơn vị / Nguồn ra đề"
+                size="small"
+                fullWidth
+                value={editSource}
+                onChange={(e) => setEditSource(e.target.value)}
+                placeholder="Ví dụ: Sở GD&ĐT Hà Nội, MyStudy"
+              />
+            </Stack>
+
+            {examToEdit && examToEdit.questionCount === 0 && (
+              <>
+                <TextField
+                  label="Đường dẫn file đề thi (PDF)"
+                  size="small"
+                  fullWidth
+                  value={editPaperUrl}
+                  onChange={(e) => setEditPaperUrl(e.target.value)}
+                />
+                <TextField
+                  label="Đường dẫn file đáp án"
+                  size="small"
+                  fullWidth
+                  value={editAnswerUrl}
+                  onChange={(e) => setEditAnswerUrl(e.target.value)}
+                />
+              </>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setExamToEdit(null)} color="inherit" disabled={updateMutation.isPending}>
+            Hủy
+          </Button>
+          <Button
+            onClick={handleUpdateSubmit}
+            variant="contained"
+            disabled={updateMutation.isPending}
+            sx={{ fontWeight: 600 }}
+          >
+            {updateMutation.isPending ? 'Đang lưu…' : 'Lưu thay đổi'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Dialog xác nhận xóa */}
       <Dialog

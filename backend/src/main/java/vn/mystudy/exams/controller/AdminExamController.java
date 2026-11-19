@@ -44,6 +44,12 @@ public class AdminExamController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(created));
     }
 
+    @org.springframework.web.bind.annotation.PutMapping("/{id}")
+    public ApiResponse<ExamSummaryResponse> update(@PathVariable UUID id, @Valid @RequestBody vn.mystudy.exams.dto.UpdateExamRequest request) {
+        ExamSummaryResponse updated = service.updateExam(id, request);
+        return ApiResponse.ok("Cập nhật đề thi thành công.", updated);
+    }
+
     @DeleteMapping("/{id}")
     public ApiResponse<Map<String, Object>> delete(@PathVariable UUID id) {
         service.deleteExam(id);

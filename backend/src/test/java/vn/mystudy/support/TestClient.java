@@ -46,6 +46,13 @@ public final class TestClient {
         return send(request);
     }
 
+    public ResultActions put(String url, String json) throws Exception {
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.put(url).contentType(MediaType.APPLICATION_JSON).content(json);
+        Cookie xsrf = jar.get("XSRF-TOKEN");
+        if (xsrf != null) request.header("X-XSRF-TOKEN", xsrf.getValue());
+        return send(request);
+    }
+
     public ResultActions delete(String url) throws Exception {
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders.delete(url);
         Cookie xsrf = jar.get("XSRF-TOKEN");
