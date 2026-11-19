@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -65,8 +66,8 @@ class AuthServiceImpl implements AuthService {
         String email = normalize(request.email());
         String hash = hashingGuard.run(() -> passwordEncoder.encode(request.password()));
         Profile newProfile = Profile.withPassword(email, hash);
-        boolean isAdmin = vn.mystudy.security.AdminSecurity.isAdmin(email, adminEmails);
-        newProfile.setRole(isAdmin ? "ADMIN" : "USER");
+        // Email đăng ký chưa được xác minh nên không bao giờ được cấp quyền quản trị tại đây.
+        newProfile.setRole("USER");
         Profile profile;
         try {
             // Không bọc trong giao dịch ngoài: vi phạm ràng buộc duy nhất chỉ làm hỏng giao dịch của repository.
@@ -143,18 +144,8 @@ class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public Optional<UserResponse> currentUser(Authentication authentication) {
-        return ProfilePrincipal.idOf(authentication).flatMap(profiles::findById).map(profile -> {
-            if (profile.getEmail() != null) {
-                String norm = profile.getEmail().trim().toLowerCase(Locale.ROOT);
-                boolean isAdmin = vn.mystudy.security.AdminSecurity.isAdmin(norm, adminEmails);
-                String expected = isAdmin ? "ADMIN" : "USER";
-                if (!expected.equalsIgnoreCase(profile.getRole())) {
-                    profile.setRole(expected);
-                    profiles.saveAndFlush(profile);
-                }
-            }
-            return mapper.toResponse(profile);
-        });
+        // Quyền lấy từ CSDL; chỉ đăng nhập Google với email đã xác minh mới cấp/thu hồi quyền quản trị.
+        return ProfilePrincipal.idOf(authentication).flatMap(profiles::findById).map(mapper::toResponse);
     }
 
     private static Authentication authenticated(AppUserDetails principal) {

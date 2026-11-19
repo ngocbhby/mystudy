@@ -1,52 +1,40 @@
 package vn.mystudy.security;
 
 import java.util.Locale;
-import java.util.Set;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsPasswordService;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import vn.mystudy.auth.entity.Profile;
 import vn.mystudy.auth.repository.ProfileRepository;
 
-/** Cầu nối giữa Spring Security và bảng profiles; tự nâng cấp mã băm cũ lên Argon2 sau khi đăng nhập đúng. */
 @Service
 class ProfileUserDetailsService implements UserDetailsService, UserDetailsPasswordService {
 
     private final ProfileRepository profiles;
-    private final Set<String> adminEmails;
 
-    ProfileUserDetailsService(ProfileRepository profiles,
-            @Value("${app.admin-email:ngocbhbymit@gmail.com, h.nam2k707@gmail.com, ductrung1232013@gmail.com}") String adminEmail) {
+    ProfileUserDetailsService(ProfileRepository profiles) {
         this.profiles = profiles;
-        this.adminEmails = AdminSecurity.parseAdminEmails(adminEmail);
     }
 
     @Override
-    @Transactional
-    public UserDetails loadUserByUsername(String email) {
-        String normalizedEmail = email.toLowerCase(Locale.ROOT);
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        String normalizedEmail = username.trim().toLowerCase(Locale.ROOT);
         Profile profile = profiles.findPasswordProfile(normalizedEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("Unknown account"));
 
-        boolean isAdmin = AdminSecurity.isAdmin(normalizedEmail, adminEmails);
-        String expectedRole = isAdmin ? "ADMIN" : "USER";
-        if (!expectedRole.equalsIgnoreCase(profile.getRole())) {
-            profile.setRole(expectedRole);
-            profiles.saveAndFlush(profile);
-        }
-
-        return new AppUserDetails(profile.getId(), normalizedEmail, profile.getPasswordHash(), expectedRole);
+        // Quyền lấy từ CSDL, không suy ra từ email (email đăng ký bằng mật khẩu chưa được xác minh).
+        return new AppUserDetails(profile.getId(), normalizedEmail, profile.getPasswordHash(), profile.getRole());
     }
 
     @Override
-    @Transactional
     public UserDetails updatePassword(UserDetails user, String newPassword) {
-        AppUserDetails principal = (AppUserDetails) user;
-        profiles.findById(principal.profileId()).ifPresent(p -> p.changePasswordHash(newPassword));
-        return new AppUserDetails(principal.profileId(), principal.getUsername(), newPassword, principal.role());
+        String normalizedEmail = user.getUsername().trim().toLowerCase(Locale.ROOT);
+        Profile profile = profiles.findPasswordProfile(normalizedEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("Unknown account"));
+        profile.changePasswordHash(newPassword);
+        profiles.saveAndFlush(profile);
+        return new AppUserDetails(profile.getId(), normalizedEmail, newPassword, profile.getRole());
     }
 }
