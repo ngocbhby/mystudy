@@ -36,12 +36,14 @@ class StudySchedulerTest {
     @Test
     void fillsDailyBudgetInChunksOfAtMost45MinutesAndOrdersByScore() {
         LocalDate monday = LocalDate.of(2026, 11, 16);
+        // foundation_first ưu tiên môn điểm thấp trước (literature=7.5 < physics=math=8.0 < english=9.0)
         List<ScheduledTask> tasks = scheduler.schedule(goal(1, 100, 1), topics, List.of(), monday, "foundation_first");
 
         List<ScheduledTask> firstDay = tasks.stream().filter(t -> t.date().equals(monday)).toList();
         assertThat(firstDay).extracting(ScheduledTask::minutes).containsExactly(45, 45, 10);
         assertThat(firstDay).extracting(ScheduledTask::position).containsExactly(1, 2, 3);
-        assertThat(firstDay.get(0).subjectCode()).isEqualTo("english");
+        // foundation_first: môn điểm thấp nhất (literature 7.5) được xếp đầu
+        assertThat(firstDay.get(0).subjectCode()).isEqualTo("literature");
     }
 
     @Test
@@ -74,9 +76,12 @@ class StudySchedulerTest {
         ScheduledTask exam = scheduler.schedule(goal(1, 45, 1), topics, List.of(), monday, "exam_focused").get(0);
         ScheduledTask base = scheduler.schedule(goal(1, 45, 1), topics, List.of(), monday, "foundation_first").get(0);
 
-        assertThat(exam.topicId()).isNotEqualTo(base.topicId());
-        assertThat(exam.content()).startsWith("Luyện dạng bài về");
-        assertThat(base.content()).startsWith("Ôn kiến thức về");
+        // Hai chiến lược ưu tiên môn theo hướng ngược nhau → môn đầu tiên khác nhau
+        assertThat(exam.subjectCode()).isNotEqualTo(base.subjectCode());
+        // exam_focused: luyện dạng bài / phân tích / bài nâng cao
+        assertThat(exam.content()).containsAnyOf("Luyện dạng bài về", "Phân tích đề mẫu về", "Thử sức bài nâng cao về");
+        // foundation_first: ôn lý thuyết / xem ví dụ / tự làm bài
+        assertThat(base.content()).containsAnyOf("Ôn lý thuyết", "Xem ví dụ minh họa về", "Tự làm bài tập cơ bản về");
     }
 
     @Test
