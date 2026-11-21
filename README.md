@@ -1,56 +1,71 @@
-### 1. Giới thiệu chung
-MyStudy là nền tảng luyện thi trực tuyến, hỗ trợ học sinh thực hiện các bài thi trắc nghiệm theo chuẩn cấu trúc kỳ thi tốt nghiệp THPT và các kỳ thi đánh giá năng lực. Hệ thống cung cấp công cụ làm bài bấm giờ, chấm điểm tự động, xem lời giải chi tiết và tích hợp trí tuệ nhân tạo (AI) để phân tích, giải thích các câu làm sai.
+TỔNG HỢP TOÀN BỘ THÔNG TIN VỀ HỆ THỐNG WEBSITE MYSTUDY
 
----
+1. Giới thiệu tổng quan và mục tiêu dự án
+- Tên hệ thống: MyStudy (Nền tảng tự học và luyện thi tốt nghiệp THPT Quốc gia thông minh).
+- Mục tiêu: Giúp học sinh THPT xây dựng lộ trình học tập cá nhân hóa theo mục tiêu điểm số từng môn, quản lý thời gian học tập hàng ngày, duy trì động lực qua chuỗi học tập (Streak), luyện thi thử trắc nghiệm trực tuyến có chấm điểm tự động và nhận trợ giúp từ trí tuệ nhân tạo (AI).
 
-### 2. Kiến trúc công nghệ (TechStack)
-- **Backend**: Java 21, Spring Boot 3, Spring Security (JWT), Spring Data JPA, PostgreSQL.
-- **Frontend**: React, TypeScript, Vite, Tailwind CSS, TanStack Query, React Router.
-- **Tích hợp AI**: Google Gemini API hỗ trợ giải thích phương pháp giải, phân tích lỗi sai trong bài làm, phân tích lộ trình phù hợp với người dùng.
-- **Quy trình triển khai (CI/CD)**: 
-  - GitHub Actions tự động kiểm thử tự động (Unit Test, Integration Test, Typecheck, Lint) khi có mã nguồn mới.
-  - Vercel phụ trách lưu trữ và triển khai Frontend.
-  - Render phụ trách chạy dịch vụ Backend và kết nối cơ sở dữ liệu.
+2. Kiến trúc và ngăn xếp công nghệ
+- Backend:
+  + Ngôn ngữ & Framework: Java 21, Spring Boot 3.5, Spring Security, Spring Data JPA.
+  + Cơ sở dữ liệu: PostgreSQL (sử dụng Flyway quản lý 18 phiên bản migration từ V1 đến V18).
+  + Thư viện xử lý tài liệu: Apache PDFBox 3.0.4 (phục vụ trích xuất văn bản từ đề thi PDF).
+  + Tích hợp AI: Kết nối Google Gemini API và Claude qua tầng trừu tượng AiGateway; có cơ chế Regex Parser dự phòng khi AI không khả dụng.
+  + Kiểm thử: JUnit 5, Mockito, Spring MockMvc, Zonky Embedded PostgreSQL (76 bài kiểm thử tích hợp và kiểm thử đơn vị).
+- Frontend:
+  + Ngôn ngữ & Framework: TypeScript, React 19, React Router 7, Vite 8.
+  + UI & Styling: Material UI (MUI v6), KaTeX (hiển thị công thức toán học và ký hiệu khoa học chuẩn xác).
+  + Quản lý trạng thái & dữ liệu máy chủ: TanStack React Query v5.
+  + Kiểm thử & Build: Vitest (36 bài kiểm thử giao diện và tiện ích), ESLint, TypeScript compiler.
 
----
+3. Các phân hệ chức năng chính
 
-### 3. Các phân hệ và tính năng dành cho học sinh (Người dùng)
+3.1. Xác thực và quản lý tài khoản người dùng
+- Đăng ký và đăng nhập bảo mật qua mã xác thực JWT và phiên làm việc (Session).
+- Đăng nhập nhanh bằng tài khoản Google (Google OAuth2).
+- Phân quyền người dùng rõ ràng:
+  + Quyền USER: Học sinh sử dụng các tính năng học tập, làm bài thi, theo dõi lộ trình và chuỗi ngày học.
+  + Quyền ADMIN: Quản trị viên hệ thống.
+ 
+3.2. Lập lộ trình học tập cá nhân hóa và quản lý nhiệm vụ
+- Thiết lập mục tiêu: Học sinh lựa chọn tổ hợp môn thi (Toán, Ngữ văn, Tiếng Anh, Vật lý, Hóa học, Sinh học, Lịch sử, Địa lý, GDKT & PL), đặt mục tiêu điểm số cho từng môn, số tháng ôn tập và thời gian học mỗi ngày.
+- Tự động sinh lịch học: Hệ thống tự động phân bổ các chuyên đề kiến thức theo ngày dựa trên chiến lược học tập (Củng cố nền tảng trước hoặc Tập trung luyện đề).
+- Quản lý nhiệm vụ hàng ngày: Học sinh theo dõi danh sách bài học trong ngày, đánh dấu hoàn thành hoặc hoàn tác, xem ghi chú kiến thức cốt lõi của từng bài học.
 
-#### a. Xác thực và tài khoản cá nhân
-- Đăng ký tài khoản mới và đăng nhập thông qua mã xác thực JWT.
-- Khôi phục và đặt lại mật khẩu qua email.
-- Trang cá nhân: Quản lý thông tin tài khoản, cập nhật hồ sơ và đổi mật khẩu.
-- Xem lại lịch sử các lượt thi đã làm, tiến độ ôn tập và điểm số trung bình.
+3.3. Cơ chế chuỗi học tập (Streak) và khôi phục chuỗi
+- Duy trì chuỗi: Mỗi ngày học sinh hoàn thành ít nhất 1 nhiệm vụ học tập hoặc nộp 1 bài thi thử, chuỗi học tập sẽ tăng thêm 1 ngày.
+- Đứt chuỗi: Nếu nghỉ học 1 ngày không có hoạt động học tập, chuỗi sẽ bị đứt.
+- Khôi phục 1 ngày chuỗi bằng 2 bài thi thử:
+  + Khi chuỗi bị đứt, hệ thống xác định chính xác ngày bị gián đoạn và hiển thị thẻ cảnh báo cùng tiến độ làm bù.
+  + Học sinh cần hoàn thành và nộp 2 bài thi thử trực tuyến để làm bù cho 1 ngày nghỉ.
+  + Khi đã tích lũy đủ 2 bài thi chưa dùng, nút "Khôi phục 1 ngày chuỗi ngay" sẽ kích hoạt để nối liền lại chuỗi ngày học.
 
-#### b. Tìm kiếm và chọn đề thi
-- Danh mục môn học đa dạng: Toán, Ngữ Văn, Vật lí, Hóa học, Sinh học, Lịch sử, Địa lí, Tiếng Anh, Giáo dục công dân.
-- Bộ lọc nâng cao: Tìm kiếm theo tên đề, lọc theo môn học, năm phát hành, đơn vị ra đề (trường THPT, sở giáo dục).
-- Phân trang hiển thị đề thi rõ ràng, tải nhanh.
+3.4. Kho đề thi thử trực tuyến và đề PDF tải về
+- Đề thi tương tác trực tuyến (MyStudy Practice):
+  + Đồng hồ bấm giờ đếm ngược theo thời gian thực.
+  + Giao diện chọn đáp án trắc nghiệm A, B, C, D trực quan, hỗ trợ công thức toán học KaTeX.
+  + Tự động chấm điểm ngay khi nộp bài hoặc khi hết giờ làm bài.
+  + Lưu trữ lịch sử toàn bộ các lượt thi (điểm số, số câu đúng/sai/bỏ trống, thời gian hoàn thành).
+  + Xem lại chi tiết bài làm kèm đáp án đúng và lời giải chi tiết cho từng câu hỏi sau khi đã nộp bài.
+- Đề thi tải về (Past Paper):
+  + Cung cấp file đề thi PDF chính thức qua các năm của Bộ GD&ĐT và các trường chuyên.
+  + Hỗ trợ xem trực tiếp tài liệu PDF và hướng dẫn giải trên trình duyệt hoặc tải về máy tính.
+- Phân trang: Kho đề thi có tính năng phân trang tiện lợi, kết hợp bộ lọc theo môn học và năm thi, giúp tìm kiếm đề nhanh chóng mà không phải cuộn trang liên tục.
 
-#### c. Phòng thi trực tuyến và nộp bài
-- Giao diện làm bài chuyên nghiệp với đồng hồ đếm ngược theo thời lượng quy định của đề (ví dụ: 50 phút, 90 phút).
-- Xem trước tài liệu đề thi gốc định dạng PDF song song với bảng chọn đáp án.
-- Bảng câu hỏi trực quan: Cho phép học sinh chọn đáp án, đánh dấu câu hỏi chưa chắc chắn để xem lại trước khi nộp.
-- Tự động thu bài khi hết thời gian quy định hoặc học sinh chủ động bấm nộp bài.
+3.5. Trợ lý AI thông minh
+- Trợ lý bóc tách đề thi PDF / văn bản: Quản trị viên chỉ cần tải lên file đề thi PDF hoặc dán văn bản thô, AI sẽ tự động phân tích và trích xuất toàn bộ câu hỏi, 4 phương án lựa chọn và đáp án đúng vào biểu mẫu tạo đề, tiết kiệm thời gian nhập liệu thủ công.
+- Giải thích chi tiết câu hỏi: Cung cấp phương pháp giải và phân tích từng phương án cho học sinh sau khi làm bài.
+- Phân tích điểm yếu & gợi ý ôn tập: Dựa vào lịch sử làm bài để thống kê các dạng bài học sinh hay làm sai và đề xuất nội dung cần ôn luyện bổ sung.
 
-#### d. Chấm điểm và phân tích kết quả
-- Hệ thống chấm điểm tự động ngay sau khi nộp bài: Hiển thị tổng điểm, số câu làm đúng, số câu làm sai và số câu chưa trả lời.
-- Bảng đối chiếu đáp án chi tiết: Xem lại bài làm của mình so với đáp án chính xác của từng câu hỏi.
-- Hướng dẫn giải: Cung cấp tài liệu lời giải chi tiết định dạng PDF hoặc lời giải từng bước.
-- Hỗ trợ AI giải thích: Đối với các câu làm sai, học sinh có thể yêu cầu AI phân tích lý do sai, tóm tắt công thức hoặc kiến thức trọng tâm cần nhớ và hướng dẫn phương pháp giải đúng.
+3.6. Kho bài tập mẫu (Worked Examples)
+- Cung cấp các bài tập thực tế hoàn chỉnh có lời giải mẫu chi tiết cho từng môn học thay vì chỉ là khung lý thuyết.
+- Chế độ hiển thị tối ưu: Khi người dùng bấm vào bài mẫu cụ thể thì nội dung chi tiết của bài đó mới mở ra, tránh việc hiển thị tràn lan gây rối mắt.
+- Phân trang danh sách bài tập mẫu rõ ràng.
+- Trang quản trị bài tập mẫu dành riêng cho Admin: Cho phép thêm môn học mới, tạo bài tập mẫu mới, cập nhật nội dung giải và xóa bài tập.
 
----
-
-### 4. Phân hệ dành cho Quản trị viên (Admin Portal)
-
-#### a. Quản lý danh mục đề thi
-- **Đăng mới đề thi**: Nhập tên đề, chọn môn học, năm thi, thời gian làm bài, nguồn gốc đề thi, đính kèm liên kết file đề bài PDF và file đáp án.
-- **Chỉnh sửa đề thi**: Cho phép quản trị viên chỉnh sửa trực tiếp thông tin các đề đã đăng (sửa tên đề khi nhập sai, sửa thời gian làm bài, năm thi, môn học, cập nhật lại link tài liệu) mà không cần phải xóa đề để tạo lại.
-- **Xóa đề thi**: Xóa bỏ các đề thi đã cũ hoặc không còn phù hợp khỏi danh sách hiển thị.
-
-#### b. Quản lý câu hỏi và đáp án
-- Thiết lập bộ đáp án chuẩn cho từng mã đề để hệ thống tự động đối chiếu chấm điểm khi học sinh nộp bài.
-
-#### c. Quản lý người dùng và hệ thống
-- Phân quyền tài khoản theo vai trò (Người dùng bình thường / Quản trị viên).
-- Giám sát tình trạng vận hành của hệ thống và lưu lượng làm bài thi.
+3.7. Bảng điều khiển quản trị viên 
+- Quản lý kho đề thi:
+  + Đăng đề thi mới (đề trắc nghiệm trực tuyến hoặc đề PDF tải về).
+  + Tích hợp AI trích xuất câu hỏi từ file PDF hoặc văn bản thô.
+  + Chỉnh sửa thông tin đề thi đã đăng (sửa tiêu đề, môn thi, năm thi, thời gian làm bài, nguồn đề, liên kết tài liệu) thay vì phải xóa đi tạo lại.
+  + Xóa đề thi không còn phù hợp.
+- Quản lý kho bài tập mẫu: Thêm môn học, đăng bài tập mẫu mới, chỉnh sửa và quản lý nội dung bài tập.
