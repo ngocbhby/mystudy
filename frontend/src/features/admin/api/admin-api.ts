@@ -1,5 +1,6 @@
 import { api } from '@/lib/http/client'
-import type { AdminExamSummary, CreateExamPayload, UpdateExamPayload } from '../types'
+import type { Sample } from '@/features/samples/model/types'
+import type { AdminExamSummary, CreateExamPayload, CreateSamplePayload, UpdateExamPayload } from '../types'
 
 export const adminApi = {
   listExams: () => api.get<AdminExamSummary[]>('/api/admin/exams'),
@@ -10,6 +11,13 @@ export const adminApi = {
     api.put<AdminExamSummary>(`/api/admin/exams/${id}`, payload),
 
   deleteExam: (id: string) => api.delete<{ deleted: boolean; id: string }>(`/api/admin/exams/${id}`),
+
+  createSample: (payload: CreateSamplePayload) => api.post<Sample>('/api/admin/samples', payload),
+
+  updateSample: (id: string, payload: CreateSamplePayload) =>
+    api.put<Sample>(`/api/admin/samples/${id}`, payload),
+
+  deleteSample: (id: string) => api.delete<void>(`/api/admin/samples/${id}`),
 
   uploadPdf: async (file: File) => {
     const formData = new FormData()

@@ -23,6 +23,15 @@ public class Topic {
 
     protected Topic() {}
 
+    public static Topic create(UUID id, String subjectCode, String name, Integer curriculumOrder) {
+        Topic topic = new Topic();
+        topic.id = id != null ? id : UUID.randomUUID();
+        topic.subjectCode = subjectCode;
+        topic.name = name;
+        topic.curriculumOrder = curriculumOrder;
+        return topic;
+    }
+
     public UUID getId() {
         return id;
     }

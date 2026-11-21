@@ -18,11 +18,13 @@ import {
   MenuItem,
   Select,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Typography,
 } from '@mui/material'
 import { useState } from 'react'
-import { Link as RouterLink } from 'react-router'
+import { Link as RouterLink, useNavigate } from 'react-router'
 import { paths } from '@/app/router/paths'
 import { colors } from '@/app/theme/theme'
 import { subjectName, subjects } from '@/features/study/model/catalog'
@@ -35,6 +37,7 @@ import type { AdminExamSummary } from '../types'
 
 export default function AdminExamListPage() {
   useDocumentTitle('Quản trị đề thi · MyStudy')
+  const navigate = useNavigate()
   const { data: exams, isLoading, isError, error, refetch } = useAdminExams()
   const deleteMutation = useDeleteExam()
   const updateMutation = useUpdateExam()
@@ -141,6 +144,18 @@ export default function AdminExamListPage() {
           </Button>
         }
       />
+
+      {/* Tabs chuyển đổi giữa Quản trị Đề thi và Quản trị Bài mẫu */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs
+          value={paths.adminExams}
+          onChange={(_, val: string) => navigate(val)}
+          sx={{ '& .MuiTab-root': { fontWeight: 600, fontSize: '1rem', textTransform: 'none' } }}
+        >
+          <Tab label="Quản trị Đề thi" value={paths.adminExams} component={RouterLink} to={paths.adminExams} />
+          <Tab label="Quản trị Bài mẫu" value={paths.adminSamples} component={RouterLink} to={paths.adminSamples} />
+        </Tabs>
+      </Box>
 
       {/* Thống kê nhanh */}
       <Box

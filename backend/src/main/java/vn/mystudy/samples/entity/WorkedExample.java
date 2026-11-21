@@ -42,6 +42,33 @@ public class WorkedExample {
 
     protected WorkedExample() {}
 
+    public static WorkedExample create(UUID id, String subjectCode, Topic topic, String title,
+            String exerciseType, String prompt, String modelSolution, String solutionNote, String sourceName) {
+        WorkedExample example = new WorkedExample();
+        example.id = id != null ? id : UUID.randomUUID();
+        example.subjectCode = subjectCode;
+        example.topic = topic;
+        example.title = title;
+        example.exerciseType = exerciseType;
+        example.prompt = prompt;
+        example.modelSolution = modelSolution;
+        example.solutionNote = solutionNote;
+        example.sourceName = sourceName;
+        return example;
+    }
+
+    public void update(String subjectCode, Topic topic, String title,
+            String exerciseType, String prompt, String modelSolution, String solutionNote, String sourceName) {
+        this.subjectCode = subjectCode;
+        this.topic = topic;
+        this.title = title;
+        this.exerciseType = exerciseType;
+        this.prompt = prompt;
+        this.modelSolution = modelSolution;
+        this.solutionNote = solutionNote;
+        this.sourceName = sourceName;
+    }
+
     public UUID getId() {
         return id;
     }

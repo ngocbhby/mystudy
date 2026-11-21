@@ -14,4 +14,5 @@ export const paths = {
   examAnswers: (id: string) => `/thi-thu/${id}/dap-an`,
   adminExams: '/quan-tri/de-thi',
   adminNewExam: '/quan-tri/de-thi/tao-moi',
+  adminSamples: '/quan-tri/bai-mau',
 } as const

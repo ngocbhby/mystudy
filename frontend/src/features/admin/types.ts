@@ -30,3 +30,16 @@ export interface UpdateExamPayload {
 }
 
 export type AdminExamSummary = ExamSummary
+
+export interface CreateSamplePayload {
+  subjectCode: string
+  topicId?: string
+  topicName?: string
+  title: string
+  exerciseType: string
+  prompt: string
+  modelSolution: string
+  solutionNote?: string
+  sourceName: string
+}
+

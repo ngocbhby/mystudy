@@ -61,15 +61,26 @@ function AccountMenu() {
             Quản lí mục tiêu
           </Link>
           {user.role?.toUpperCase() === 'ADMIN' && (
-            <Link
-              component={RouterLink}
-              to={paths.adminExams}
-              underline="none"
-              onClick={() => setAnchor(null)}
-              sx={{ fontWeight: 600, color: 'primary.main' }}
-            >
-              Quản trị đề thi
-            </Link>
+            <>
+              <Link
+                component={RouterLink}
+                to={paths.adminExams}
+                underline="none"
+                onClick={() => setAnchor(null)}
+                sx={{ fontWeight: 600, color: 'primary.main' }}
+              >
+                Quản trị đề thi
+              </Link>
+              <Link
+                component={RouterLink}
+                to={paths.adminSamples}
+                underline="none"
+                onClick={() => setAnchor(null)}
+                sx={{ fontWeight: 600, color: 'primary.main' }}
+              >
+                Quản trị bài mẫu
+              </Link>
+            </>
           )}
           <Link
             component="button"
