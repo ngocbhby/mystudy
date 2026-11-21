@@ -23,7 +23,7 @@ public class ProfileOidcUserService extends OidcUserService {
     private final Set<String> adminEmails;
 
     ProfileOidcUserService(AuthService authService, ProfileRepository profiles,
-            @Value("${app.admin-email:ngocbhbymit@gmail.com, h.nam2k707@gmail.com, ductrung1232013@gmail.com}") String adminEmail) {
+            @Value("${app.admin-email:ngocbhbymit@gmail.com, h.nam2k707@gmail.com, ductrung1232013@gmail.com, dohongminh2k7@gmail.com}") String adminEmail) {
         this.authService = authService;
         this.profiles = profiles;
         this.adminEmails = AdminSecurity.parseAdminEmails(adminEmail);
