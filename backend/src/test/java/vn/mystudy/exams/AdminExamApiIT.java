@@ -202,4 +202,58 @@ class AdminExamApiIT extends IntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.header().string("Content-Type", org.hamcrest.Matchers.startsWith("application/pdf")));
     }
+
+    @Test
+    void adminCanConvertTextToExamQuestions() throws Exception {
+        TestClient client = adminClient();
+        String payload = """
+                {
+                    "text": "Câu 1: Giá trị của 1 + 1 là?\\nA. 1\\nB. 2\\nC. 3\\nD. 4\\nĐáp án: B\\n\\nCâu 2: Nguyên hàm của 2x là?\\nA. x^2\\nB. 2x^2\\nC. x\\nD. 2"
+                }
+                """;
+
+        client.post("/api/admin/exams/convert-text", payload)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].prompt").value(org.hamcrest.Matchers.containsString("Câu 1")))
+                .andExpect(jsonPath("$.data[0].options").isArray())
+                .andExpect(jsonPath("$.data[0].correctOptionNumber").value(2))
+                .andExpect(jsonPath("$.data[1].prompt").value(org.hamcrest.Matchers.containsString("Câu 2")));
+    }
+
+    @Test
+    void adminCanConvertPdfToExamQuestions() throws Exception {
+        TestClient client = adminClient();
+
+        byte[] pdfBytes;
+        try (org.apache.pdfbox.pdmodel.PDDocument doc = new org.apache.pdfbox.pdmodel.PDDocument()) {
+            org.apache.pdfbox.pdmodel.PDPage page = new org.apache.pdfbox.pdmodel.PDPage();
+            doc.addPage(page);
+            try (org.apache.pdfbox.pdmodel.PDPageContentStream cs =
+                         new org.apache.pdfbox.pdmodel.PDPageContentStream(doc, page)) {
+                cs.beginText();
+                cs.setFont(new org.apache.pdfbox.pdmodel.font.PDType1Font(
+                        org.apache.pdfbox.pdmodel.font.Standard14Fonts.FontName.HELVETICA), 12);
+                cs.newLineAtOffset(50, 700);
+                cs.showText("Cau 1: 1 + 1 bang bao nhieu? A. 1 B. 2 C. 3 D. 4");
+                cs.endText();
+            }
+            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
+            doc.save(baos);
+            pdfBytes = baos.toByteArray();
+        }
+
+        org.springframework.mock.web.MockMultipartFile file = new org.springframework.mock.web.MockMultipartFile(
+                "file",
+                "test-exam.pdf",
+                "application/pdf",
+                pdfBytes
+        );
+
+        client.multipart(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .multipart("/api/admin/exams/convert-pdf").file(file))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").isArray())
+                .andExpect(jsonPath("$.data[0].prompt").value(org.hamcrest.Matchers.containsString("1 + 1")));
+    }
 }
