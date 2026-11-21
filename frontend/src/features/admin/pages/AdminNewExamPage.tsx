@@ -1,5 +1,6 @@
 import ArrowBackIcon from '@mui/icons-material/ArrowBack'
 import AddIcon from '@mui/icons-material/Add'
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome'
 import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 import DeleteIcon from '@mui/icons-material/Delete'
 import CheckIcon from '@mui/icons-material/Check'
@@ -8,6 +9,7 @@ import {
   Box,
   Button,
   Card,
+  CircularProgress,
   Divider,
   FormControl,
   FormControlLabel,
@@ -31,7 +33,7 @@ import { colors } from '@/app/theme/theme'
 import { subjects } from '@/features/study/model/catalog'
 import { PageHeader } from '@/shared/components/PageHeader'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
-import { useCreateExam, useUploadPdf } from '../hooks/useAdmin'
+import { useConvertPdf, useConvertText, useCreateExam, useUploadPdf } from '../hooks/useAdmin'
 import type { CreateExamPayload, CreateQuestionPayload } from '../types'
 
 interface FormQuestion {
@@ -53,6 +55,8 @@ export default function AdminNewExamPage() {
   const navigate = useNavigate()
   const createMutation = useCreateExam()
   const uploadMutation = useUploadPdf()
+  const convertPdfMutation = useConvertPdf()
+  const convertTextMutation = useConvertText()
 
   const [kind, setKind] = useState<'mystudy_practice' | 'past_paper'>('mystudy_practice')
   const [subjectCode, setSubjectCode] = useState('math')
@@ -70,6 +74,83 @@ export default function AdminNewExamPage() {
   // Cho đề trắc nghiệm trực tuyến
   const [questions, setQuestions] = useState<FormQuestion[]>([emptyQuestion()])
   const [formError, setFormError] = useState<string | null>(null)
+
+  // AI Convert PDF / Văn bản
+  const [aiInputMode, setAiInputMode] = useState<'pdf' | 'text'>('pdf')
+  const [aiFile, setAiFile] = useState<File | null>(null)
+  const [aiRawText, setAiRawText] = useState('')
+  const [aiSuccessMessage, setAiSuccessMessage] = useState<string | null>(null)
+  const [aiErrorMessage, setAiErrorMessage] = useState<string | null>(null)
+
+  const isAiConverting = convertPdfMutation.isPending || convertTextMutation.isPending
+
+  const handleConvertPdf = () => {
+    if (!aiFile) {
+      setAiErrorMessage('Vui lòng chọn file PDF đề thi trước khi chuyển đổi.')
+      return
+    }
+    setAiErrorMessage(null)
+    setAiSuccessMessage(null)
+    convertPdfMutation.mutate(aiFile, {
+      onSuccess: (data) => {
+        if (!data || data.length === 0) {
+          setAiErrorMessage('Không tìm thấy câu hỏi trắc nghiệm nào trong file PDF.')
+          return
+        }
+        const parsed: FormQuestion[] = data.map((item) => ({
+          prompt: item.prompt || '',
+          options: [
+            item.options?.[0] || '',
+            item.options?.[1] || '',
+            item.options?.[2] || '',
+            item.options?.[3] || '',
+          ],
+          correctOptionNumber:
+            item.correctOptionNumber >= 1 && item.correctOptionNumber <= 4 ? item.correctOptionNumber : 1,
+          explanation: item.explanation || '',
+        }))
+        setQuestions(parsed)
+        setAiSuccessMessage(`Đã dùng AI trích xuất thành công ${parsed.length} câu hỏi vào danh sách bên dưới.`)
+      },
+      onError: (err) => {
+        setAiErrorMessage(err instanceof Error ? err.message : 'Trích xuất câu hỏi từ PDF thất bại.')
+      },
+    })
+  }
+
+  const handleConvertText = () => {
+    if (!aiRawText.trim()) {
+      setAiErrorMessage('Vui lòng dán nội dung văn bản đề thi để chuyển đổi.')
+      return
+    }
+    setAiErrorMessage(null)
+    setAiSuccessMessage(null)
+    convertTextMutation.mutate(aiRawText.trim(), {
+      onSuccess: (data) => {
+        if (!data || data.length === 0) {
+          setAiErrorMessage('Không tìm thấy câu hỏi trắc nghiệm nào trong nội dung văn bản.')
+          return
+        }
+        const parsed: FormQuestion[] = data.map((item) => ({
+          prompt: item.prompt || '',
+          options: [
+            item.options?.[0] || '',
+            item.options?.[1] || '',
+            item.options?.[2] || '',
+            item.options?.[3] || '',
+          ],
+          correctOptionNumber:
+            item.correctOptionNumber >= 1 && item.correctOptionNumber <= 4 ? item.correctOptionNumber : 1,
+          explanation: item.explanation || '',
+        }))
+        setQuestions(parsed)
+        setAiSuccessMessage(`Đã dùng AI trích xuất thành công ${parsed.length} câu hỏi vào danh sách bên dưới.`)
+      },
+      onError: (err) => {
+        setAiErrorMessage(err instanceof Error ? err.message : 'Trích xuất câu hỏi từ văn bản thất bại.')
+      },
+    })
+  }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -421,12 +502,161 @@ export default function AdminNewExamPage() {
             </Card>
           )}
 
-          {/* Card 3B: Cấu hình Đề trắc nghiệm online */}
+          {/* Card 3: Trợ lý AI trích xuất câu hỏi */}
+          {kind === 'mystudy_practice' && (
+            <Card
+              sx={{
+                p: 3,
+                borderRadius: 3,
+                border: '1.5px solid',
+                borderColor: colors.lavender,
+                bgcolor: 'rgba(109, 77, 214, 0.03)',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                <AutoAwesomeIcon sx={{ color: colors.purple }} />
+                <Typography variant="h6" sx={{ fontWeight: 700, color: colors.purple }}>
+                  3. Trợ lý AI: Tự động trích xuất câu hỏi từ file PDF hoặc văn bản
+                </Typography>
+              </Box>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2.5 }}>
+                Tải lên file đề thi PDF hoặc dán văn bản thô để hệ thống AI tự động bóc tách từng câu hỏi,
+                4 đáp án trắc nghiệm A, B, C, D và đáp án đúng vào danh sách bên dưới mà không cần gõ thủ công.
+              </Typography>
+
+              {aiSuccessMessage && (
+                <Alert severity="success" sx={{ mb: 2 }} onClose={() => setAiSuccessMessage(null)}>
+                  {aiSuccessMessage}
+                </Alert>
+              )}
+
+              {aiErrorMessage && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setAiErrorMessage(null)}>
+                  {aiErrorMessage}
+                </Alert>
+              )}
+
+              <Stack direction="row" spacing={1} sx={{ mb: 2.5 }}>
+                <Button
+                  variant={aiInputMode === 'pdf' ? 'contained' : 'outlined'}
+                  size="small"
+                  onClick={() => {
+                    setAiInputMode('pdf')
+                    setAiErrorMessage(null)
+                  }}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Trích xuất từ file PDF
+                </Button>
+                <Button
+                  variant={aiInputMode === 'text' ? 'contained' : 'outlined'}
+                  size="small"
+                  onClick={() => {
+                    setAiInputMode('text')
+                    setAiErrorMessage(null)
+                  }}
+                  sx={{ textTransform: 'none', fontWeight: 600 }}
+                >
+                  Dán nội dung văn bản đề thi
+                </Button>
+              </Stack>
+
+              {aiInputMode === 'pdf' ? (
+                <Box
+                  sx={{
+                    border: '2px dashed',
+                    borderColor: 'divider',
+                    borderRadius: 3,
+                    p: 3,
+                    textAlign: 'center',
+                    bgcolor: 'background.paper',
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept=".pdf,application/pdf"
+                    id="ai-pdf-upload-input"
+                    style={{ display: 'none' }}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) {
+                        setAiFile(f)
+                        setAiErrorMessage(null)
+                      }
+                    }}
+                  />
+                  <label htmlFor="ai-pdf-upload-input">
+                    <Button
+                      variant="outlined"
+                      component="span"
+                      startIcon={<CloudUploadIcon />}
+                      disabled={isAiConverting}
+                      sx={{ fontWeight: 600, py: 1.25, px: 3, borderRadius: 2.5 }}
+                    >
+                      {aiFile ? `Đã chọn: ${aiFile.name}` : 'Chọn file PDF đề thi từ máy tính'}
+                    </Button>
+                  </label>
+
+                  <Box sx={{ mt: 2 }}>
+                    <Button
+                      variant="contained"
+                      onClick={handleConvertPdf}
+                      disabled={!aiFile || isAiConverting}
+                      startIcon={isAiConverting ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeIcon />}
+                      sx={{
+                        fontWeight: 700,
+                        px: 3,
+                        py: 1,
+                        borderRadius: 2.5,
+                        textTransform: 'none',
+                      }}
+                    >
+                      {isAiConverting ? 'AI đang bóc tách câu hỏi…' : 'AI bóc tách câu hỏi từ PDF'}
+                    </Button>
+                  </Box>
+                  <FormHelperText sx={{ textAlign: 'center', mt: 1 }}>
+                    Hỗ trợ file PDF chứa chữ bản mềm hoặc file đề thi các môn Toán, Lý, Hóa, Sinh, Sử, Địa, GDCD, Tiếng Anh.
+                  </FormHelperText>
+                </Box>
+              ) : (
+                <Box sx={{ bgcolor: 'background.paper', p: 2.5, borderRadius: 3, border: '1px solid', borderColor: 'divider' }}>
+                  <TextField
+                    fullWidth
+                    multiline
+                    minRows={6}
+                    maxRows={16}
+                    label="Nội dung văn bản đề thi"
+                    placeholder="Dán toàn bộ nội dung đề thi vào đây (VD: Câu 1: ... A. ... B. ... C. ... D. ...)"
+                    value={aiRawText}
+                    onChange={(e) => setAiRawText(e.target.value)}
+                    sx={{ mb: 2 }}
+                  />
+                  <Button
+                    variant="contained"
+                    onClick={handleConvertText}
+                    disabled={!aiRawText.trim() || isAiConverting}
+                    startIcon={isAiConverting ? <CircularProgress size={18} color="inherit" /> : <AutoAwesomeIcon />}
+                    sx={{
+                      fontWeight: 700,
+                      px: 3,
+                      py: 1,
+                      borderRadius: 2.5,
+                      textTransform: 'none',
+                    }}
+                  >
+                    {isAiConverting ? 'AI đang bóc tách câu hỏi…' : 'AI bóc tách câu hỏi từ văn bản'}
+                  </Button>
+                </Box>
+              )}
+            </Card>
+          )}
+
+          {/* Card 4: Cấu hình Đề trắc nghiệm online */}
           {kind === 'mystudy_practice' && (
             <Card sx={{ p: 3, borderRadius: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                  3. Danh sách câu hỏi ({questions.length} câu)
+                  4. Danh sách câu hỏi ({questions.length} câu)
                 </Typography>
                 <Button
                   type="button"

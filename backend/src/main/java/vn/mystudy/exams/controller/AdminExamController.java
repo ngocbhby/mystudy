@@ -28,9 +28,12 @@ import vn.mystudy.exams.service.AdminExamService;
 public class AdminExamController {
 
     private final AdminExamService service;
+    private final vn.mystudy.exams.service.ExamAiConversionService conversionService;
 
-    public AdminExamController(AdminExamService service) {
+    public AdminExamController(AdminExamService service,
+            vn.mystudy.exams.service.ExamAiConversionService conversionService) {
         this.service = service;
+        this.conversionService = conversionService;
     }
 
     @GetMapping
@@ -60,5 +63,22 @@ public class AdminExamController {
     public ApiResponse<Map<String, String>> uploadPdf(@RequestParam("file") MultipartFile file) {
         String url = service.uploadPdf(file);
         return ApiResponse.ok(Map.of("url", url));
+    }
+
+    @PostMapping(value = "/convert-pdf", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<List<vn.mystudy.exams.dto.ConvertedExamQuestions.ConvertedQuestionItem>> convertPdf(
+            @RequestParam("file") MultipartFile file) {
+        List<vn.mystudy.exams.dto.ConvertedExamQuestions.ConvertedQuestionItem> questions =
+                conversionService.convertPdf(file);
+        return ApiResponse.ok("Chuyển đổi đề thi PDF thành công.", questions);
+    }
+
+    @PostMapping("/convert-text")
+    public ApiResponse<List<vn.mystudy.exams.dto.ConvertedExamQuestions.ConvertedQuestionItem>> convertText(
+            @RequestBody Map<String, String> body) {
+        String text = body.getOrDefault("text", "");
+        List<vn.mystudy.exams.dto.ConvertedExamQuestions.ConvertedQuestionItem> questions =
+                conversionService.convertText(text);
+        return ApiResponse.ok("Chuyển đổi đề thi thành công.", questions);
     }
 }

@@ -1,6 +1,12 @@
 import { api } from '@/lib/http/client'
 import type { Sample } from '@/features/samples/model/types'
-import type { AdminExamSummary, CreateExamPayload, CreateSamplePayload, UpdateExamPayload } from '../types'
+import type {
+  AdminExamSummary,
+  ConvertedQuestionItem,
+  CreateExamPayload,
+  CreateSamplePayload,
+  UpdateExamPayload,
+} from '../types'
 
 export const adminApi = {
   listExams: () => api.get<AdminExamSummary[]>('/api/admin/exams'),
@@ -24,4 +30,13 @@ export const adminApi = {
     formData.append('file', file)
     return api.post<{ url: string }>('/api/admin/exams/upload-pdf', formData)
   },
+
+  convertPdf: async (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    return api.post<ConvertedQuestionItem[]>('/api/admin/exams/convert-pdf', formData)
+  },
+
+  convertText: (text: string) =>
+    api.post<ConvertedQuestionItem[]>('/api/admin/exams/convert-text', { text }),
 }

@@ -88,3 +88,15 @@ export function useUploadPdf() {
     mutationFn: (file: File) => adminApi.uploadPdf(file),
   })
 }
+
+export function useConvertPdf() {
+  return useMutation({
+    mutationFn: (file: File) => adminApi.convertPdf(file),
+  })
+}
+
+export function useConvertText() {
+  return useMutation({
+    mutationFn: (text: string) => adminApi.convertText(text),
+  })
+}

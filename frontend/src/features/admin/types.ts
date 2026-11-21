@@ -7,6 +7,13 @@ export interface CreateQuestionPayload {
   explanation?: string
 }
 
+export interface ConvertedQuestionItem {
+  prompt: string
+  options: string[]
+  correctOptionNumber: number
+  explanation?: string
+}
+
 export interface CreateExamPayload {
   subjectCode: string
   title: string
