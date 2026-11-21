@@ -68,6 +68,10 @@ export const router = createBrowserRouter([
             lazy: async () => ({ Component: (await import('@/features/admin/pages/AdminExamListPage')).default }),
           },
           {
+            path: paths.adminSamples,
+            lazy: async () => ({ Component: (await import('@/features/admin/pages/AdminSampleListPage')).default }),
+          },
+          {
             path: paths.adminNewExam,
             lazy: async () => ({ Component: (await import('@/features/admin/pages/AdminNewExamPage')).default }),
           },

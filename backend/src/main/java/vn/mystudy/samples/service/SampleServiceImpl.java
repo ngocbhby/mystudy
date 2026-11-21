@@ -32,7 +32,8 @@ class SampleServiceImpl implements SampleService {
 
     @Override
     public SampleListResponse list(String subject, UUID topicId) {
-        if (subject != null && !subject.isBlank() && !StudyCatalog.SUBJECTS.containsKey(subject)) {
+        if (subject != null && !subject.isBlank() && !StudyCatalog.SUBJECTS.containsKey(subject)
+                && samples.findAll().stream().noneMatch(s -> s.getSubjectCode().equalsIgnoreCase(subject))) {
             throw new BusinessException(ErrorCode.BAD_REQUEST, "Bộ lọc bài mẫu không hợp lệ.");
         }
         Specification<WorkedExample> filter = (root, query, cb) -> cb.conjunction();

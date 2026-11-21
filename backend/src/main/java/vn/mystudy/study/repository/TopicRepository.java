@@ -12,4 +12,8 @@ public interface TopicRepository extends JpaRepository<Topic, UUID> {
 
     @Query("select t from Topic t where t.subjectCode in :codes and t.curriculumOrder is not null order by t.curriculumOrder")
     List<Topic> findCurriculum(@Param("codes") Collection<String> codes);
+
+    java.util.Optional<Topic> findFirstBySubjectCodeAndName(String subjectCode, String name);
+
+    List<Topic> findBySubjectCodeOrderByName(String subjectCode);
 }
