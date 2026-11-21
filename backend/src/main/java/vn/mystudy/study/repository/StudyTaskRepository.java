@@ -45,10 +45,20 @@ public interface StudyTaskRepository extends JpaRepository<StudyTask, UUID> {
     @Query("select min(t.scheduledOn) from StudyTask t where t.profileId = :profileId and t.scheduledOn > :today and t.cancelledAt is null")
     LocalDate findNextStudyDate(@Param("profileId") UUID profileId, @Param("today") LocalDate today);
 
-    /** Các ngày (giờ Việt Nam) có ít nhất một nhiệm vụ được đánh dấu hoàn thành. */
+    /** Các ngày (giờ Việt Nam) có học tập: hoàn thành nhiệm vụ, nộp bài thi thử, hoặc ngày đã khôi phục chuỗi. */
     @Query(value = """
-            select distinct cast(cast(completed_at at time zone 'Asia/Ho_Chi_Minh' as date) as text)
-            from study_tasks
-            where profile_id = :profileId and completed_at is not null and cancelled_at is null""", nativeQuery = true)
+            select distinct cast(study_date as text) from (
+                select cast(completed_at at time zone 'Asia/Ho_Chi_Minh' as date) as study_date
+                from study_tasks
+                where profile_id = :profileId and completed_at is not null and cancelled_at is null
+                union
+                select cast(submitted_at at time zone 'Asia/Ho_Chi_Minh' as date) as study_date
+                from exam_attempts
+                where profile_id = :profileId and submitted_at is not null
+                union
+                select recovered_date as study_date
+                from streak_recoveries
+                where profile_id = :profileId
+            ) d order by study_date asc""", nativeQuery = true)
     List<String> findCompletedDays(@Param("profileId") UUID profileId);
 }

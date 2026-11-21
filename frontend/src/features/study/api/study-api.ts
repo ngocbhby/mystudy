@@ -1,5 +1,5 @@
 import { api } from '@/lib/http/client'
-import type { GoalInput, Overview, StudyGoalData, Task } from '../model/types'
+import type { GoalInput, Overview, StreakInfo, StudyGoalData, Task } from '../model/types'
 
 export const studyApi = {
   getGoal: () => api.get<StudyGoalData>('/api/study/goal'),
@@ -9,4 +9,7 @@ export const studyApi = {
     api.get<{ tasks: Task[] }>('/api/study/tasks', { params: { from, to } }).then((r) => r.tasks),
   completeTask: (id: string) => api.post<void>('/api/study/tasks', { id }),
   uncompleteTask: (id: string) => api.post<void>('/api/study/tasks/uncomplete', { id }),
+  getStreak: () => api.get<StreakInfo>('/api/study/streak'),
+  recoverStreak: (date?: string) =>
+    api.post<StreakInfo>('/api/study/streak/recover', date ? { date } : {}),
 }

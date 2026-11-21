@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import vn.mystudy.study.dto.OverviewResponse;
+import vn.mystudy.study.dto.StreakInfoResponse;
 import vn.mystudy.study.dto.TaskResponse;
 
 public interface StudyTaskService {
@@ -17,4 +18,8 @@ public interface StudyTaskService {
 
     /** Hủy đánh dấu hoàn thành nhiệm vụ nếu người dùng bấm nhầm. */
     void uncomplete(UUID profileId, UUID taskId);
+
+    StreakInfoResponse streakInfo(UUID profileId);
+
+    StreakInfoResponse recoverStreak(UUID profileId, LocalDate targetDate);
 }

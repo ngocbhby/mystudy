@@ -22,6 +22,7 @@ class StudyApiIT extends IntegrationTest {
              "months":2,"dailyMinutes":90,"days":[1,2,3,4,5,6,7]}""";
 
     @Autowired MockMvc mvc;
+    @Autowired org.springframework.jdbc.core.JdbcTemplate jdbc;
 
     private TestClient signedIn() throws Exception {
         TestClient client = new TestClient(mvc);
@@ -117,5 +118,85 @@ class StudyApiIT extends IntegrationTest {
         stranger.post("/api/study/tasks", "{\"id\":\"" + taskId + "\"}")
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("NOT_FOUND"));
+    }
+
+    @Test
+    void streakTrackingAndRecoveryWithTwoMockExams() throws Exception {
+        TestClient student = signedIn();
+        String session = student.get("/api/session").andReturn().getResponse().getContentAsString();
+        String profileId = JsonPath.read(session, "$.data.user.id");
+
+        // 1. Kiểm tra streak ban đầu
+        student.get("/api/study/streak")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.currentStreak").value(0))
+                .andExpect(jsonPath("$.data.isBroken").value(false))
+                .andExpect(jsonPath("$.data.requiredExamsForRecovery").value(2))
+                .andExpect(jsonPath("$.data.availableExamsCount").value(0))
+                .andExpect(jsonPath("$.data.canRecover").value(false));
+
+        // 2. Giả lập quá khứ: học sinh đã học 3 ngày liên tiếp (hôm kia, 3 ngày trước, 4 ngày trước), nhưng hôm qua nghỉ học
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"));
+        LocalDate dayMinus2 = today.minusDays(2);
+        LocalDate yesterday = today.minusDays(1);
+
+        student.post("/api/study/goal", GOAL).andExpect(status().isCreated());
+        jdbc.update("UPDATE study_tasks SET scheduled_on = ?, completed_at = ?::timestamptz WHERE id = (SELECT id FROM study_tasks WHERE profile_id = ?::uuid LIMIT 1)",
+                dayMinus2, dayMinus2 + " 08:00:00+07", profileId);
+
+        // Khi này hôm qua nghỉ học -> chuỗi bị đứt (currentStreak = 0, isBroken = true, missedDate = yesterday)
+        student.get("/api/study/streak")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.currentStreak").value(0))
+                .andExpect(jsonPath("$.data.isBroken").value(true))
+                .andExpect(jsonPath("$.data.missedDate").value(yesterday.toString()))
+                .andExpect(jsonPath("$.data.canRecover").value(false));
+
+        // 3. Gọi khôi phục khi chưa làm bù đủ 2 bài thi thử -> Báo lỗi BAD_REQUEST
+        student.post("/api/study/streak/recover", "{}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"));
+
+        // 4. Học sinh làm 1 bài thi thử
+        String examId = "d20da322-56e4-53ee-82ee-6ff0cc471cf3";
+        var res1 = student.post("/api/exams/" + examId + "/attempts/start", "{}").andExpect(status().isOk()).andReturn();
+        String attemptId1 = JsonPath.read(res1.getResponse().getContentAsString(), "$.data.attemptId");
+        student.post("/api/exams/" + examId + "/attempts/" + attemptId1 + "/submit", "{\"answers\":{\"1\":1}}")
+                .andExpect(status().isOk());
+
+        // Mới có 1 bài -> availableExamsCount = 1, canRecover vẫn là false
+        student.get("/api/study/streak")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.availableExamsCount").value(1))
+                .andExpect(jsonPath("$.data.canRecover").value(false));
+
+        // Gọi khôi phục vẫn chưa đủ điều kiện
+        student.post("/api/study/streak/recover", "{}")
+                .andExpect(status().isBadRequest());
+
+        // 5. Học sinh làm bài thi thử thứ 2
+        var res2 = student.post("/api/exams/" + examId + "/attempts/start", "{}").andExpect(status().isOk()).andReturn();
+        String attemptId2 = JsonPath.read(res2.getResponse().getContentAsString(), "$.data.attemptId");
+        student.post("/api/exams/" + examId + "/attempts/" + attemptId2 + "/submit", "{\"answers\":{\"1\":2}}")
+                .andExpect(status().isOk());
+
+        // Đã đủ 2 bài thi thử! canRecover = true
+        student.get("/api/study/streak")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.availableExamsCount").value(2))
+                .andExpect(jsonPath("$.data.canRecover").value(true));
+
+        // 6. Thực hiện khôi phục chuỗi
+        student.post("/api/study/streak/recover", "{}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.currentStreak").value(3)) // dayMinus2 + yesterday (được khôi phục) + today (thi thử) = 3
+                .andExpect(jsonPath("$.data.isBroken").value(false))
+                .andExpect(jsonPath("$.data.availableExamsCount").value(0))
+                .andExpect(jsonPath("$.data.totalRecoveredDays").value(1));
+
+        // Kiểm tra overview cũng phản ánh streakDays = 3
+        student.get("/api/study/overview")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.streakDays").value(3));
     }
 }

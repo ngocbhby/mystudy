@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   Card,
@@ -12,6 +13,8 @@ import {
   Typography,
 } from '@mui/material'
 import CloseIcon from '@mui/icons-material/Close'
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment'
+import RestoreIcon from '@mui/icons-material/Restore'
 import { useRef, useState } from 'react'
 import { Link as RouterLink } from 'react-router'
 import { paths } from '@/app/router/paths'
@@ -24,7 +27,7 @@ import { LoadingState } from '@/shared/components/LoadingState'
 import { Kicker } from '@/shared/components/PageHeader'
 import { useCurrentTime } from '@/shared/hooks/useCurrentTime'
 import { useDocumentTitle } from '@/shared/hooks/useDocumentTitle'
-import { useCompleteTask, useOverview, useStudyGoal, useUncompleteTask } from '../hooks/useStudy'
+import { useCompleteTask, useOverview, useRecoverStreak, useStudyGoal, useUncompleteTask } from '../hooks/useStudy'
 import { purposes, requiredSubjects, subjectName } from '../model/catalog'
 import type { Goal, Task } from '../model/types'
 
@@ -178,6 +181,9 @@ export default function OverviewPage() {
   const overview = useOverview(today, hasPlan)
   const complete = useCompleteTask()
   const uncomplete = useUncompleteTask()
+  const recoverMutation = useRecoverStreak()
+  const [streakActionMessage, setStreakActionMessage] = useState<string | null>(null)
+  const [streakErrorMessage, setStreakErrorMessage] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -190,7 +196,21 @@ export default function OverviewPage() {
   const tasks = overview.data?.tasks ?? []
   const activeTask = tasks.find((t) => t.id === selected) ?? tasks.find((t) => !t.completed) ?? tasks[0]
   const done = tasks.filter((t) => t.completed).length
+  const streakInfo = overview.data?.streakInfo
   const streak = Math.max(overview.data?.streakDays ?? 0, done > 0 ? 1 : 0)
+
+  const handleRecoverStreak = () => {
+    setStreakErrorMessage(null)
+    setStreakActionMessage(null)
+    recoverMutation.mutate(undefined, {
+      onSuccess: () => {
+        setStreakActionMessage('Đã khôi phục thành công 1 ngày chuỗi học tập bằng 2 bài thi thử làm bù!')
+      },
+      onError: (err) => {
+        setStreakErrorMessage(err instanceof Error ? err.message : 'Khôi phục chuỗi thất bại.')
+      },
+    })
+  }
 
   const pick = (id: string, openDialog = false) => {
     setSelected(id)
@@ -222,18 +242,93 @@ export default function OverviewPage() {
           <Box
             aria-live="polite"
             sx={{
-              bgcolor: colors.lavender,
-              color: 'primary.main',
-              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              bgcolor: streakInfo?.isBroken ? 'rgba(214, 77, 77, 0.08)' : colors.lavender,
+              color: streakInfo?.isBroken ? 'error.main' : 'primary.main',
+              fontWeight: 600,
               borderRadius: 3,
               px: 2.25,
               py: 1.5,
+              border: streakInfo?.isBroken ? '1px solid rgba(214, 77, 77, 0.2)' : 'none',
             }}
           >
-            {streak > 0 ? `${streak} ngày học liên tiếp` : 'Bắt đầu chuỗi học hôm nay'}
+            <LocalFireDepartmentIcon fontSize="small" />
+            <Typography variant="body2" sx={{ fontWeight: 600, color: 'inherit' }}>
+              {streakInfo?.isBroken
+                ? 'Chuỗi bị gián đoạn (Nghỉ 1 hôm)'
+                : streak > 0
+                ? `${streak} ngày học liên tiếp`
+                : 'Bắt đầu chuỗi học hôm nay'}
+            </Typography>
           </Box>
         )}
       </Stack>
+
+      {streakActionMessage && (
+        <Alert severity="success" onClose={() => setStreakActionMessage(null)}>
+          {streakActionMessage}
+        </Alert>
+      )}
+
+      {streakErrorMessage && (
+        <Alert severity="error" onClose={() => setStreakErrorMessage(null)}>
+          {streakErrorMessage}
+        </Alert>
+      )}
+
+      {streakInfo?.isBroken && (
+        <Card
+          sx={{
+            p: 2.5,
+            borderRadius: 3,
+            bgcolor: 'rgba(214, 77, 77, 0.04)',
+            border: '1.5px solid',
+            borderColor: 'rgba(214, 77, 77, 0.25)',
+          }}
+        >
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={2}
+            sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between' }}
+          >
+            <Box>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, color: 'error.main' }}>
+                Chuỗi học tập đã bị gián đoạn vào ngày {streakInfo.missedDate ? formatFullDate(streakInfo.missedDate) : 'gần nhất'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Quy tắc chuỗi: Học mỗi ngày để duy trì chuỗi; nếu nghỉ 1 hôm sẽ đứt chuỗi. Bạn có thể khôi phục 1 ngày chuỗi bằng cách làm bù 2 bài thi thử.
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1, fontWeight: 600 }}>
+                Tiến độ bài thi thử làm bù: {streakInfo.availableExamsCount} / {streakInfo.requiredExamsForRecovery} bài đã hoàn thành
+              </Typography>
+            </Box>
+            <Box sx={{ flexShrink: 0 }}>
+              {streakInfo.canRecover ? (
+                <Button
+                  variant="contained"
+                  onClick={handleRecoverStreak}
+                  disabled={recoverMutation.isPending}
+                  startIcon={<RestoreIcon />}
+                  sx={{ fontWeight: 700, textTransform: 'none', px: 2.5, py: 1, borderRadius: 2.5 }}
+                >
+                  {recoverMutation.isPending ? 'Đang khôi phục…' : 'Khôi phục 1 ngày chuỗi ngay'}
+                </Button>
+              ) : (
+                <Button
+                  component={RouterLink}
+                  to={paths.exams}
+                  variant="outlined"
+                  sx={{ fontWeight: 600, textTransform: 'none', px: 2.5, py: 1, borderRadius: 2.5 }}
+                >
+                  Làm bù bài thi thử (còn {Math.max(0, streakInfo.requiredExamsForRecovery - streakInfo.availableExamsCount)} bài)
+                </Button>
+              )}
+            </Box>
+          </Stack>
+        </Card>
+      )}
 
       {!goal && <NoPlan />}
 
