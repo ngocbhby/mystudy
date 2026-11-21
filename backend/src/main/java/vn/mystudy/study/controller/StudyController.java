@@ -59,6 +59,21 @@ class StudyController {
         return ApiResponse.ok(taskService.overview(user.profileId()));
     }
 
+    @GetMapping("/streak")
+    ApiResponse<vn.mystudy.study.dto.StreakInfoResponse> streak(@AuthenticationPrincipal ProfilePrincipal user) {
+        return ApiResponse.ok(taskService.streakInfo(user.profileId()));
+    }
+
+    @PostMapping("/streak/recover")
+    ApiResponse<vn.mystudy.study.dto.StreakInfoResponse> recoverStreak(
+            @AuthenticationPrincipal ProfilePrincipal user,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
+        String dateStr = body != null ? body.get("date") : null;
+        LocalDate targetDate = (dateStr != null && !dateStr.isBlank()) ? LocalDate.parse(dateStr) : null;
+        vn.mystudy.study.dto.StreakInfoResponse info = taskService.recoverStreak(user.profileId(), targetDate);
+        return ApiResponse.ok("Đã khôi phục thành công chuỗi học tập bằng 2 bài thi thử.", info);
+    }
+
     @GetMapping("/tasks")
     ApiResponse<TaskListResponse> tasks(@AuthenticationPrincipal ProfilePrincipal user,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,

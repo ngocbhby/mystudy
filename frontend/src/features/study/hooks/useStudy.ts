@@ -69,3 +69,23 @@ export function useUncompleteTask() {
       ]),
   })
 }
+
+export function useStreak(enabled = true) {
+  return useQuery({
+    queryKey: [...studyKeys.all, 'streak'] as const,
+    queryFn: studyApi.getStreak,
+    enabled,
+  })
+}
+
+export function useRecoverStreak() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (date?: string) => studyApi.recoverStreak(date),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: studyKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ['exams'] }),
+      ]),
+  })
+}

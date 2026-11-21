@@ -24,4 +24,28 @@ public interface ExamAttemptRepository extends JpaRepository<ExamAttempt, UUID> 
     Optional<ExamAttempt> lockById(@Param("id") UUID id);
 
     List<ExamAttempt> findByProfileIdOrderBySubmittedAtDesc(UUID profileId);
+
+    @Query(value = """
+            SELECT ea.id FROM exam_attempts ea
+            WHERE ea.profile_id = :profileId
+              AND ea.submitted_at IS NOT NULL
+              AND ea.id NOT IN (
+                  SELECT attempt_id_1 FROM streak_recoveries WHERE profile_id = :profileId AND attempt_id_1 IS NOT NULL
+                  UNION
+                  SELECT attempt_id_2 FROM streak_recoveries WHERE profile_id = :profileId AND attempt_id_2 IS NOT NULL
+              )
+            ORDER BY ea.submitted_at ASC
+            LIMIT :limit""", nativeQuery = true)
+    List<UUID> findUnusedSubmittedAttemptIds(@Param("profileId") UUID profileId, @Param("limit") int limit);
+
+    @Query(value = """
+            SELECT count(ea.id) FROM exam_attempts ea
+            WHERE ea.profile_id = :profileId
+              AND ea.submitted_at IS NOT NULL
+              AND ea.id NOT IN (
+                  SELECT attempt_id_1 FROM streak_recoveries WHERE profile_id = :profileId AND attempt_id_1 IS NOT NULL
+                  UNION
+                  SELECT attempt_id_2 FROM streak_recoveries WHERE profile_id = :profileId AND attempt_id_2 IS NOT NULL
+              )""", nativeQuery = true)
+    int countUnusedSubmittedAttempts(@Param("profileId") UUID profileId);
 }

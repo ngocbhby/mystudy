@@ -40,9 +40,20 @@ export interface Task {
   completed: boolean
 }
 
+export interface StreakInfo {
+  currentStreak: number
+  isBroken: boolean
+  missedDate: string | null
+  requiredExamsForRecovery: number
+  availableExamsCount: number
+  canRecover: boolean
+  totalRecoveredDays: number
+}
+
 export interface Overview {
   today: string
   tasks: Task[]
   nextStudyDate: string | null
   streakDays: number
+  streakInfo?: StreakInfo
 }
